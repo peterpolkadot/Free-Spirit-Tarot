@@ -1,4 +1,3 @@
-
 import Head from 'next/head';
 
 export default function HeadMeta({ title, description, image, url }) {

@@ -2,11 +2,11 @@
 import Head from 'next/head';
 
 export default function HeadMeta({ title, description, image, url }) {
-  const siteName = 'Chatbot City 🤖';
+  const siteName = 'Free Spirit Tarot 🔮';
   const metaTitle = title ? `${title} | ${siteName}` : siteName;
-  const metaDesc = description || 'Explore hundreds of AI chatbots designed for creativity, support, and fun.';
+  const metaDesc = description || 'Connect with AI tarot readers for guidance, insight, and spiritual wisdom.';
   const metaImage = image || '/default-og.png';
-  const metaUrl = url || 'https://chatbotcity.ai';
+  const metaUrl = url || 'https://fstarot.com.au';
 
   return (
     <Head>
@@ -20,7 +20,7 @@ export default function HeadMeta({ title, description, image, url }) {
       <meta name="twitter:title" content={metaTitle} />
       <meta name="twitter:description" content={metaDesc} />
       <meta name="twitter:image" content={metaImage} />
-      <meta name="theme-color" content="#2563EB" />
+      <meta name="theme-color" content="#7C3AED" />
       <link rel="icon" href="/favicon.ico" />
     </Head>
   );

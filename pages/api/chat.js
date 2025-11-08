@@ -3,7 +3,10 @@ import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 async function getThreeCardReading() {
   const { data: cards } = await supabase.from('cards').select('*');
@@ -23,7 +26,8 @@ async function getThreeCardReading() {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  const { messages } = req.body;
+  const { messages, readerAlias } = req.body;
+
   try {
     const completion = await client.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -40,12 +44,36 @@ export default async function handler(req, res) {
         },
       ],
     });
+
     const msg = completion.choices[0].message;
+
     if (msg.tool_calls) {
       const cards = await getThreeCardReading();
-      const reply = `Your three cards are:\n\n${cards.map(c => `**${c.name}** – ${c.meaning}`).join('\n\n')}\n\n${cards.map((c, i) => `![Card ${i+1}](${c.image_url})`).join(' ')}`;
+      const reply =
+        `Your three cards are:\n\n` +
+        cards
+          .map(c => `**${c.name}** – ${c.meaning}`)
+          .join('\n\n') +
+        `\n\n` +
+        cards
+          .map((c, i) => `![Card ${i + 1}](${c.image_url})`)
+          .join(' ');
+
+      // 🪶 Log reading asynchronously to Google Sheets (non-blocking)
+      fetch('https://script.google.com/macros/s/AKfycbyXFSnts5zAjI_SVUww8p8Ygjt58UeSHtHTrHqoZPUe0jGx57q4COkqUcVbE45vVhUM/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reader: readerAlias,
+          cards,
+          timestamp: new Date().toISOString(),
+          prompt: messages[messages.length - 1].content,
+        }),
+      }).catch(() => {}); // don't block chat if it fails
+
       return res.json({ reply, cards });
     }
+
     res.json({ reply: msg.content?.trim() || '...' });
   } catch (err) {
     console.error('Chat error', err);

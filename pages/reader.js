@@ -6,6 +6,7 @@ export async function getStaticProps() {
   const { data: readers } = await supabase.from('readers').select('*').order('name', { ascending: true });
   return { props: { readers } };
 }
+
 export default function ReadersPage({ readers }) {
   return (
     <div>

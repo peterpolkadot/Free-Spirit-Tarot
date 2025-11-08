@@ -6,6 +6,7 @@ export async function getStaticPaths() {
   const { data } = await supabase.from('categories').select('slug');
   return { paths: data?.map(c => ({ params: { slug: c.slug } })) || [], fallback: 'blocking' };
 }
+
 export async function getStaticProps({ params }) {
   const { data: category } = await supabase.from('categories').select('*').eq('slug', params.slug).single();
   if (!category) return { notFound: true };

@@ -6,6 +6,7 @@ export async function getStaticProps() {
   const { data: categories } = await supabase.from('categories').select('*');
   return { props: { categories } };
 }
+
 export default function Home({ categories }) {
   return (
     <div>

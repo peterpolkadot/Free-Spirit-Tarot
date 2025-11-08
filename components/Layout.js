@@ -7,16 +7,12 @@ export default function Layout({ children }) {
   const router = useRouter();
   const segments = router.asPath.split('/').filter(Boolean);
 
-  // Build readable breadcrumb labels
   const crumbs = segments.map((seg, i) => {
     const href = '/' + segments.slice(0, i + 1).join('/');
     let label = decodeURIComponent(seg)
       .replace(/-/g, ' ')
       .replace(/\b\w/g, (l) => l.toUpperCase());
-    // Special rule for /reader/[slug]
-    if (segments[0] === 'reader') {
-      if (i === 0) label = 'Readers';
-    }
+    if (segments[0] === 'reader' && i === 0) label = 'Readers';
     return { href, label };
   });
 
@@ -27,14 +23,11 @@ export default function Layout({ children }) {
       </Head>
 
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-950 via-purple-950 to-purple-900 text-white">
-
-        {/* Header */}
         <header className="py-6 text-center font-bold text-2xl">
           <Link href="/" className="hover:text-yellow-300 transition">
             🔮 Free Spirit Tarot
           </Link>
 
-          {/* Global breadcrumbs */}
           {crumbs.length > 0 && (
             <nav className="mt-2 text-sm text-purple-300">
               <Link href="/" className="hover:text-yellow-300">Home</Link>

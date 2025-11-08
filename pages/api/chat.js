@@ -57,7 +57,7 @@ export default async function handler(req, res) {
 
       // 🪶 Server-side logging (no CORS issues)
       try {
-        await fetch('https://script.google.com/macros/s/AKfycbwixRPTD7Og8DFntPHg_JAeOGAepdjCFiBUftjbv69a2knwnvsGILmRFiDLt0WitsRT/exec', {
+        await fetch('https://script.google.com/macros/s/AKfycbzrYe_I1RTtujb6Jo6Ne4TAgQB--4LiGo8aENtRLOAqNK-LPQT5pYe_2OVxxYESUiPj/exec', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

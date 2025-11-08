@@ -74,7 +74,7 @@ export default async function handler(req, res) {
       return res.json({ reply, cards });
     }
 
-    res.json({ reply: msg.content?.trim() || '...' });
+       res.json({ reply: msg.content?.trim() || '...' });
   } catch (err) {
     console.error('Chat error', err);
     res.status(500).json({ reply: 'Sorry, something went wrong.' });

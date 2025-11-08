@@ -57,7 +57,7 @@ export default async function handler(req, res) {
 
       // 🪶 Log to Google Sheets via Apps Script Web App (server-side = no CORS issues)
       try {
-        await fetch('https://script.google.com/macros/s/AKfycbxkEZQSFN0sL-Rqmca1TtZKxrGe4rIvrEg66uXvz8CZbnudmwu-sal7KuvYuwc6ubg/exec', {
+        await fetch('https://script.google.com/macros/s/AKfycbzJkMIaulrS_FVICQTYANm6vdSP3knT-cMYxPsOo3eUaYBtE28FxpJfHnqqU1NeJrpM/exec', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

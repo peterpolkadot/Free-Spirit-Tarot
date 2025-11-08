@@ -5,14 +5,18 @@ import { useRouter } from 'next/router';
 
 export default function Layout({ children }) {
   const router = useRouter();
-
-  // Build simple breadcrumb segments
   const segments = router.asPath.split('/').filter(Boolean);
+
+  // Build readable breadcrumb labels
   const crumbs = segments.map((seg, i) => {
     const href = '/' + segments.slice(0, i + 1).join('/');
-    const label = decodeURIComponent(seg)
+    let label = decodeURIComponent(seg)
       .replace(/-/g, ' ')
-      .replace(/w/g, (l) => l.toUpperCase());
+      .replace(/\w/g, (l) => l.toUpperCase());
+    // Special rule for /reader/[slug]
+    if (segments[0] === 'reader') {
+      if (i === 0) label = 'Readers';
+    }
     return { href, label };
   });
 
@@ -24,13 +28,13 @@ export default function Layout({ children }) {
 
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-950 via-purple-950 to-purple-900 text-white">
 
-        {/* 🧭 Header */}
+        {/* Header */}
         <header className="py-6 text-center font-bold text-2xl">
           <Link href="/" className="hover:text-yellow-300 transition">
             🔮 Free Spirit Tarot
           </Link>
 
-          {/* 🌿 Site-wide breadcrumbs */}
+          {/* Global breadcrumbs */}
           {crumbs.length > 0 && (
             <nav className="mt-2 text-sm text-purple-300">
               <Link href="/" className="hover:text-yellow-300">Home</Link>
@@ -46,12 +50,8 @@ export default function Layout({ children }) {
           )}
         </header>
 
-        {/* 🪶 Main content */}
-        <main className="flex-1 container mx-auto p-6">
-          {children}
-        </main>
+        <main className="flex-1 container mx-auto p-6">{children}</main>
 
-        {/* 💫 Footer */}
         <footer className="text-center py-4 text-purple-300 text-sm">
           © 2025 Free Spirit Tarot
         </footer>

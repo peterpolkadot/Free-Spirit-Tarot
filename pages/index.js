@@ -1,35 +1,23 @@
 
-import Head from 'next/head';
-import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
+import Link from 'next/link';
 
 export async function getStaticProps() {
-  const { data: categories } = await supabase.from('categories').select('*').order('id');
-  return { props: { categories: categories || [] }, revalidate: 60 };
+  const { data: categories } = await supabase.from('categories').select('*');
+  return { props: { categories } };
 }
-
 export default function Home({ categories }) {
   return (
-    <>
-      <Head>
-        <title>Free Spirit Tarot 🔮</title>
-        <meta name="description" content="Connect with AI tarot readers for guidance and spiritual insight." />
-      </Head>
-      <section className="text-center mt-16">
-        <h1 className="text-5xl font-bold text-white mb-4">🔮 Free Spirit Tarot</h1>
-        <p className="text-xl text-purple-200 mb-10">Connect with AI tarot readers for insight and wisdom.</p>
-      </section>
-      <section id="categories" className="mt-20">
-        <h2 className="text-3xl font-bold text-yellow-300 mb-8 text-center">Browse by Category</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {categories.map(cat => (
-            <Link key={cat.id} href={`/category/${cat.slug}`} className="block p-6 rounded-lg bg-purple-900/40 border border-purple-700 hover:scale-[1.03] transition">
-              <h3 className="text-xl font-semibold text-yellow-300 mb-2">{cat.category_name}</h3>
-              <p className="text-purple-300 text-sm">{cat.vibe}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-    </>
+    <div>
+      <h1 className="text-4xl mb-8 text-center font-bold text-yellow-300">Choose a Category</h1>
+      <div className="grid md:grid-cols-3 gap-6">
+        {categories?.map(cat => (
+          <Link key={cat.id} href={`/category/${cat.slug}`} className="block p-6 bg-purple-900/40 rounded-lg border border-purple-700 hover:scale-[1.03] transition">
+            <h3 className="text-xl text-yellow-300">{cat.category_name}</h3>
+            <p className="text-sm text-purple-200">{cat.vibe}</p>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -1,2 +1,2 @@
 # Free Spirit Tarot 🔮
-AI tarot reader directory with live readings using Next.js + Tailwind + Supabase + OpenAI.
+Dynamic AI tarot readers using Next.js + Supabase + OpenAI.

@@ -14,7 +14,7 @@ async function getThreeCardReading() {
   const chosen = [];
   while (chosen.length < 3) {
     const c = cards[Math.floor(Math.random() * cards.length)];
-    if (!chosen.some((x) => x.id === c.id)) chosen.push(c);
+    if (!chosen.some(x => x.id === c.id)) chosen.push(c);
   }
   return chosen.map(c => ({
     id: c.id,
@@ -50,24 +50,21 @@ export default async function handler(req, res) {
     if (msg.tool_calls) {
       const cards = await getThreeCardReading();
       const reply =
-        `Your three cards are:\n\n` +
-        cards.map(c => `**${c.name}** – ${c.meaning}`).join('\n\n') +
-        `\n\n` +
-        cards.map((c, i) => `![Card ${i + 1}](${c.image_url})`).join(' ');
+        "Your three cards are:\n\n" +
+        cards.map(c => "**" + c.name + "** – " + c.meaning).join("\n\n") +
+        "\n\n" +
+        cards.map((c, i) => "![Card " + (i + 1) + "](" + c.image_url + ")").join(" ");
 
-      // 🪶 Server-side logging (no CORS issues)
+      // 🪶 Log to Google Sheets via Apps Script Web App (server-side = no CORS issues)
       try {
-        await fetch('https://script.google.com/macros/s/AKfycbzrYe_I1RTtujb6Jo6Ne4TAgQB--4LiGo8aENtRLOAqNK-LPQT5pYe_2OVxxYESUiPj/exec', {
+        await fetch('https://script.google.com/macros/s/AKfycbx5d3WvhUYe8mBYZkU5C_GaM6SmWn0Xr_hKtNZUJvLtxYK-FVYE404gstonFc-V3k3d/exec', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            reader_alias: readerAlias,
-            reader_name: readerAlias,
+            reader: readerAlias,
             cards,
             timestamp: new Date().toISOString(),
-            question: messages[messages.length - 1].content,
-            response_length: reply.length,
-            session_id: crypto.randomUUID(),
+            prompt: messages[messages.length - 1].content,
           }),
         });
       } catch (err) {

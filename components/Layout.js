@@ -1,15 +1,60 @@
 
 import Head from 'next/head';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+
 export default function Layout({ children }) {
+  const router = useRouter();
+
+  // Build simple breadcrumb segments
+  const segments = router.asPath.split('/').filter(Boolean);
+  const crumbs = segments.map((seg, i) => {
+    const href = '/' + segments.slice(0, i + 1).join('/');
+    const label = decodeURIComponent(seg)
+      .replace(/-/g, ' ')
+      .replace(/w/g, (l) => l.toUpperCase());
+    return { href, label };
+  });
+
   return (
     <>
       <Head>
         <title>Free Spirit Tarot 🔮</title>
       </Head>
+
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-950 via-purple-950 to-purple-900 text-white">
-        <header className="py-6 text-center font-bold text-2xl">🔮 Free Spirit Tarot</header>
-        <main className="flex-1 container mx-auto p-6">{children}</main>
-        <footer className="text-center py-4 text-purple-300 text-sm">© 2025 Free Spirit Tarot</footer>
+
+        {/* 🧭 Header */}
+        <header className="py-6 text-center font-bold text-2xl">
+          <Link href="/" className="hover:text-yellow-300 transition">
+            🔮 Free Spirit Tarot
+          </Link>
+
+          {/* 🌿 Site-wide breadcrumbs */}
+          {crumbs.length > 0 && (
+            <nav className="mt-2 text-sm text-purple-300">
+              <Link href="/" className="hover:text-yellow-300">Home</Link>
+              {crumbs.map((c, i) => (
+                <span key={i}>
+                  {' '}›{' '}
+                  <Link href={c.href} className="hover:text-yellow-300">
+                    {c.label}
+                  </Link>
+                </span>
+              ))}
+            </nav>
+          )}
+        </header>
+
+        {/* 🪶 Main content */}
+        <main className="flex-1 container mx-auto p-6">
+          {children}
+        </main>
+
+        {/* 💫 Footer */}
+        <footer className="text-center py-4 text-purple-300 text-sm">
+          © 2025 Free Spirit Tarot
+        </footer>
       </div>
     </>
   );

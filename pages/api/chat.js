@@ -60,7 +60,7 @@ export default async function handler(req, res) {
           .join(' ');
 
       // 🪶 Log reading asynchronously to Google Sheets (non-blocking)
-      fetch('https://script.google.com/macros/s/AKfycbyXFSnts5zAjI_SVUww8p8Ygjt58UeSHtHTrHqoZPUe0jGx57q4COkqUcVbE45vVhUM/exec', {
+      fetch('https://script.google.com/macros/s/AKfycbxoPWJ7iiHd6GhEuaJKkxW2-FnWffUsnd7t4H_e2DN_sZFvdn3273fgwBU9womY6oBo/exec', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,5 +1,4 @@
 import Link from 'next/link';
-
 export default function Breadcrumbs({ category }) {
   return (
     <nav className="text-sm text-purple-300 mb-4">

@@ -12,7 +12,7 @@ export default function Layout({ children }) {
     const href = '/' + segments.slice(0, i + 1).join('/');
     let label = decodeURIComponent(seg)
       .replace(/-/g, ' ')
-      .replace(/\w/g, (l) => l.toUpperCase());
+      .replace(/\b\w/g, (l) => l.toUpperCase());
     // Special rule for /reader/[slug]
     if (segments[0] === 'reader') {
       if (i === 0) label = 'Readers';

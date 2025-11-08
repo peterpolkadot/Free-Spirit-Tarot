@@ -21,7 +21,7 @@ export default function CategoryPage({ category, readers }) {
       </h1>
       <div className="grid md:grid-cols-3 gap-6">
         {readers?.map(r => (
-          <Link key={r.id} href={`/reader/${r.alias}`} className="block bg-purple-900/40 p-6 rounded-lg border border-purple-700 hover:scale-[1.03] transition">
+          <Link key={r.id} href={'/reader/' + r.alias} className="block bg-purple-900/40 p-6 rounded-lg border border-purple-700 hover:scale-[1.03] transition">
             <h3 className="text-xl text-yellow-300 mb-2">{r.emoji || category.emoji || '🔮'} {r.name}</h3>
             <p className="text-sm text-purple-200">{r.tagline}</p>
           </Link>

@@ -1,3 +1,4 @@
+
 export default function Header() {
   return (
     <header className='bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-900 text-white py-6 shadow-lg'>

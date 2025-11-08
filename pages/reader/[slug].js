@@ -1,3 +1,4 @@
+import Head from "next/head";
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { getSupabase } from '../../lib/supabaseClient';
@@ -35,11 +36,31 @@ export default function ReaderPage() {
   const seoTitle = `${reader.emoji || '🔮'} ${reader.name} — AI Tarot Reader`;
   const seoDesc = reader.tagline || reader.description || 'Get a tarot reading from this intuitive AI reader.';
   const seoImage = reader.image_url || '/default-og.png';
-  const seoUrl = `https://fstarot.com.au/reader/${reader.alias}`;
+  const seoUrl = `https://fstarot.com/reader/${reader.alias}`;
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: reader.name,
+    alternateName: reader.alias,
+    description: reader.description || seoDesc,
+    image: seoImage,
+    url: seoUrl,
+    jobTitle: "AI Tarot Reader",
+    worksFor: {
+      "@type": "Organization",
+      name: "Free Spirit Tarot",
+      url: "https://fstarot.com"
+    },
+    knowsAbout: reader.specialty || "Tarot readings, spirituality, guidance"
+  };
 
   return (
     <Layout>
       <HeadMeta title={seoTitle} description={seoDesc} image={seoImage} url={seoUrl} />
+      <Head>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      </Head>
       <Breadcrumbs category={category} />
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center gap-4 mb-4">

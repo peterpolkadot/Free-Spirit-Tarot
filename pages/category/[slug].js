@@ -1,3 +1,4 @@
+import Head from "next/head";
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { getSupabase } from '../../lib/supabaseClient';
@@ -26,10 +27,29 @@ export default function CategoryPage() {
 
   const seoTitle = `${category.emoji} ${category.category_name}`;
   const seoDesc = category.description || 'Discover unique tarot readers in this category.';
+  const seoUrl = `https://fstarot.com/category/${slug}`;
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: category.category_name,
+    description: category.description,
+    url: seoUrl,
+    hasPart: readers.map(r => ({
+      "@type": "Person",
+      name: r.name,
+      description: r.tagline,
+      image: r.image_url || "/default-og.png",
+      url: `https://fstarot.com/reader/${r.alias}`,
+    }))
+  };
 
   return (
     <Layout>
-      <HeadMeta title={seoTitle} description={seoDesc} />
+      <HeadMeta title={seoTitle} description={seoDesc} url={seoUrl} />
+      <Head>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      </Head>
       <Breadcrumbs category={category} />
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
@@ -45,11 +65,6 @@ export default function CategoryPage() {
               </div>
               <p className="text-sm text-purple-200 italic mb-2">{reader.tagline}</p>
               <p className="text-xs text-purple-300 mb-2">{reader.specialty}</p>
-              <div className="flex flex-wrap gap-1 mt-2">
-                {reader.tags && reader.tags.split(',').slice(0, 3).map((tag, idx) => (
-                  <span key={idx} className="text-xs bg-purple-600 text-purple-100 px-2 py-1 rounded-full">{tag.trim()}</span>
-                ))}
-              </div>
             </a>
           ))}
         </div>

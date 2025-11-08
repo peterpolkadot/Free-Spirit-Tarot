@@ -61,7 +61,7 @@ export default async function handler(req, res) {
 
       // 🪶 Log reading asynchronously to Google Sheets (non-blocking)
     // 🪶 Log reading asynchronously to Google Sheets (non-blocking)
-fetch('https://script.google.com/macros/s/AKfycbxoPWJ7iiHd6GhEuaJKkxW2-FnWffUsnd7t4H_e2DN_sZFvdn3273fgwBU9womY6oBo/exec', {
+fetch('https://script.google.com/macros/s/AKfycbxPNIEsFHGXQ_9NfkPK8OpZoNjyB2tn9vQwx0nC2o6M1BTPpbU3C0lR4dIOuGs7ry8/exec', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({

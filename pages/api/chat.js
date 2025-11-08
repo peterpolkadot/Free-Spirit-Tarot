@@ -57,16 +57,17 @@ export default async function handler(req, res) {
 
       // 🪶 Log to Google Sheets via Apps Script Web App (server-side = no CORS issues)
       try {
-        await fetch('https://script.google.com/macros/s/AKfycbzJkMIaulrS_FVICQTYANm6vdSP3knT-cMYxPsOo3eUaYBtE28FxpJfHnqqU1NeJrpM/exec', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            reader: readerAlias,
-            cards,
-            timestamp: new Date().toISOString(),
-            prompt: messages[messages.length - 1].content,
-          }),
-        });
+       await fetch('https://script.google.com/macros/s/AKfycbxr8f9fEyaAQRpxkwQp_lfBXOk0BL4GVC2ZonGc8nLzQHGftJg1bU0mNFdw-sX3B0tz/exec', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    reader: readerAlias,
+    card_ids: cards.map(c => c.id),
+    timestamp: new Date().toISOString(),
+    prompt: messages[messages.length - 1].content,
+  }),
+});
+
       } catch (err) {
         console.error('Logging failed:', err);
       }

@@ -1,45 +1,49 @@
 
 import OpenAI from 'openai';
+import { createClient } from '@supabase/supabase-js';
+
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
-// Optional: import local tarot card data if you store it as JSON
-// import cards from '@/data/cards.json';
+// 🎴 Fetch 3 random cards from Supabase
+async function getThreeCardReading() {
+  const { data: cards, error } = await supabase.from('cards').select('*');
+  if (error) throw error;
+  if (!cards || cards.length < 3) throw new Error('No cards found.');
 
-// If you don’t have a local JSON file, you can define card data directly here for now:
-const cards = [
-  { name: "The Fool", image_url: "/cards/fool.jpg", meaning: "New beginnings, optimism, faith in the future." },
-  { name: "The Magician", image_url: "/cards/magician.jpg", meaning: "Action, power, manifestation." },
-  { name: "The High Priestess", image_url: "/cards/high-priestess.jpg", meaning: "Wisdom, intuition, higher powers." },
-  // ...add all cards as needed
-];
-
-// Helper: draw 3 random unique cards
-function getThreeCardReading() {
   const selected = [];
   while (selected.length < 3) {
-    const card = cards[Math.floor(Math.random() * cards.length)];
-    if (!selected.some(c => c.name === card.name)) selected.push(card);
+    const c = cards[Math.floor(Math.random() * cards.length)];
+    if (!selected.some(x => x.id === c.id)) selected.push(c);
   }
-  return selected;
+  return selected.map(c => ({
+    id: c.id,
+    name: c.name,
+    image_url: c.image_url,
+    meaning: c.meaning
+  }));
 }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  const { messages, readerAlias } = req.body;
+  const { messages } = req.body;
 
   try {
-    // Ask OpenAI to respond, with access to a tool
+    // 🔮 Ask the model; allow it to call getThreeCardReading
     const completion = await client.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.8,
-      max_tokens: 800,
+      max_tokens: 900,
       messages,
       tools: [
         {
           type: 'function',
           function: {
             name: 'getThreeCardReading',
-            description: 'Draws three random tarot cards and returns their images and meanings.',
+            description: 'Draws three random tarot cards from the Supabase cards table and returns their images and meanings.',
             parameters: { type: 'object', properties: {} }
           }
         }
@@ -48,17 +52,18 @@ export default async function handler(req, res) {
 
     const msg = completion.choices[0].message;
 
-    // If the model calls the function
+    // 🧙 If AI calls our function
     if (msg.tool_calls) {
-      const cardsDrawn = getThreeCardReading();
+      const cardsDrawn = await getThreeCardReading();
       const reply = `Your three cards are:\n\n${cardsDrawn
         .map(c => `**${c.name}** – ${c.meaning}`)
-        .join('\n\n')}\n\n![Card 1](${cardsDrawn[0].image_url}) ![Card 2](${cardsDrawn[1].image_url}) ![Card 3](${cardsDrawn[2].image_url})`;
-
+        .join('\n\n')}\n\n${cardsDrawn
+        .map((c, i) => `![Card ${i + 1}](${c.image_url})`)
+        .join(' ')}`;
       return res.json({ reply, cards: cardsDrawn });
     }
 
-    // Otherwise normal text reply
+    // Otherwise, normal text reply
     const reply = msg.content?.trim() || '...';
     res.json({ reply });
   } catch (err) {

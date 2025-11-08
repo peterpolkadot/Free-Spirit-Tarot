@@ -8,9 +8,11 @@ export async function getStaticPaths() {
 }
 export async function getStaticProps({ params }) {
   const { data: category } = await supabase.from('categories').select('*').eq('slug', params.slug).single();
+  if (!category) return { notFound: true };
   const { data: readers } = await supabase.from('readers').select('*').eq('category', category.category_name);
   return { props: { category, readers } };
 }
+
 export default function CategoryPage({ category, readers }) {
   return (
     <div>

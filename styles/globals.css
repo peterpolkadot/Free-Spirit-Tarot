@@ -6,11 +6,5 @@
 html, body {
   @apply min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-purple-900 text-white font-raleway antialiased;
 }
-
-a {
-  @apply text-purple-300 hover:text-purple-100 transition;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  @apply font-poppins text-yellow-300;
-}
+a {@apply text-purple-300 hover:text-purple-100 transition;}
+h1, h2, h3, h4, h5, h6 {@apply font-poppins text-yellow-300;}

@@ -16,7 +16,7 @@ async function getThreeCardReading() {
     const c = cards[Math.floor(Math.random() * cards.length)];
     if (!chosen.some((x) => x.id === c.id)) chosen.push(c);
   }
-  return chosen.map((c) => ({
+  return chosen.map(c => ({
     id: c.id,
     name: c.name,
     image_url: c.image_url,
@@ -51,30 +51,28 @@ export default async function handler(req, res) {
       const cards = await getThreeCardReading();
       const reply =
         `Your three cards are:\n\n` +
-        cards
-          .map(c => `**${c.name}** – ${c.meaning}`)
-          .join('\n\n') +
+        cards.map(c => `**${c.name}** – ${c.meaning}`).join('\n\n') +
         `\n\n` +
-        cards
-          .map((c, i) => `![Card ${i + 1}](${c.image_url})`)
-          .join(' ');
+        cards.map((c, i) => `![Card ${i + 1}](${c.image_url})`).join(' ');
 
-      // 🪶 Log reading asynchronously to Google Sheets (non-blocking)
-    // 🪶 Log reading asynchronously to Google Sheets (non-blocking)
-fetch('https://script.google.com/macros/s/AKfycbxPNIEsFHGXQ_9NfkPK8OpZoNjyB2tn9vQwx0nC2o6M1BTPpbU3C0lR4dIOuGs7ry8/exec', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    reader_alias: readerAlias,
-    reader_name: readerAlias,
-    cards,
-    timestamp: new Date().toISOString(),
-    question: messages[messages.length - 1].content,
-    response_length: reply.length,
-    session_id: crypto.randomUUID(),
-  }),
-}).catch(() => {}); // don't block chat if it fails
-
+      // 🪶 Server-side logging (no CORS issues)
+      try {
+        await fetch('https://script.google.com/macros/s/AKfycbwixRPTD7Og8DFntPHg_JAeOGAepdjCFiBUftjbv69a2knwnvsGILmRFiDLt0WitsRT/exec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reader_alias: readerAlias,
+            reader_name: readerAlias,
+            cards,
+            timestamp: new Date().toISOString(),
+            question: messages[messages.length - 1].content,
+            response_length: reply.length,
+            session_id: crypto.randomUUID(),
+          }),
+        });
+      } catch (err) {
+        console.error('Logging failed:', err);
+      }
 
       return res.json({ reply, cards });
     }

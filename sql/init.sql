@@ -33,7 +33,7 @@ create or replace function increment_reader_meta(reader_alias_param text, user_i
 returns void as $$
 begin
   update readers
-  set temperature = temperature -- just a stub for example, add custom counters here
+  set temperature = temperature
   where alias = reader_alias_param;
 end;
 $$ language plpgsql;

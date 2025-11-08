@@ -60,16 +60,21 @@ export default async function handler(req, res) {
           .join(' ');
 
       // 🪶 Log reading asynchronously to Google Sheets (non-blocking)
-      fetch('https://script.google.com/macros/s/AKfycbxoPWJ7iiHd6GhEuaJKkxW2-FnWffUsnd7t4H_e2DN_sZFvdn3273fgwBU9womY6oBo/exec', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reader: readerAlias,
-          cards,
-          timestamp: new Date().toISOString(),
-          prompt: messages[messages.length - 1].content,
-        }),
-      }).catch(() => {}); // don't block chat if it fails
+    // 🪶 Log reading asynchronously to Google Sheets (non-blocking)
+fetch('https://script.google.com/macros/s/AKfycbxoPWJ7iiHd6GhEuaJKkxW2-FnWffUsnd7t4H_e2DN_sZFvdn3273fgwBU9womY6oBo/exec', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    reader_alias: readerAlias,
+    reader_name: readerAlias,
+    cards,
+    timestamp: new Date().toISOString(),
+    question: messages[messages.length - 1].content,
+    response_length: reply.length,
+    session_id: crypto.randomUUID(),
+  }),
+}).catch(() => {}); // don't block chat if it fails
+
 
       return res.json({ reply, cards });
     }

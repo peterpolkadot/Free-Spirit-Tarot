@@ -11,7 +11,8 @@ const supabase = createClient(
 
 // 🧙 Draw 3 random tarot cards
 async function getThreeCardReading() {
-  const { data: cards } = await supabase.from('cards').select('*');
+  const { data: cards, error } = await supabase.from('cards').select('*');
+  if (error) throw error;
   if (!cards?.length) throw new Error('No cards found in Supabase.');
 
   const chosen = [];
@@ -30,8 +31,18 @@ async function getThreeCardReading() {
 
 // 🪶 Update or insert stats for each card
 async function logCardStats(cards, readerAlias) {
+  console.log('🪶 Logging stats for reader:', readerAlias);
   for (const card of cards) {
-    // Ensure the record exists or create it
+    console.log('⏳ Logging card:', card.id, card.name);
+    const { data: existing, error: fetchError } = await supabase
+      .from('card_stats')
+      .select('draw_count')
+      .eq('card_id', card.id)
+      .maybeSingle();
+
+    if (fetchError) console.error('❌ Fetch error:', fetchError);
+
+    const drawCount = existing?.draw_count ? existing.draw_count + 1 : 1;
     const { error: upsertError } = await supabase
       .from('card_stats')
       .upsert({
@@ -39,14 +50,12 @@ async function logCardStats(cards, readerAlias) {
         card_name: card.name,
         category: card.category,
         reader: readerAlias,
+        draw_count: drawCount,
         last_drawn: new Date().toISOString(),
       }, { onConflict: 'card_id' });
 
-    if (upsertError) console.error('Upsert error:', upsertError);
-
-    // Increment draw_count via Postgres function
-    const { error: rpcError } = await supabase.rpc('increment_card_draw', { cid: card.id });
-    if (rpcError) console.error('RPC increment error:', rpcError);
+    if (upsertError) console.error('❌ Upsert error:', upsertError);
+    else console.log('✅ Updated draw count for', card.name, '→', drawCount);
   }
 }
 

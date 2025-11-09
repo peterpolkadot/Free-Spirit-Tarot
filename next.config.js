@@ -2,6 +2,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    unoptimized: true, // ⚡ Skip optimization for instant loads
     remotePatterns: [
       {
         protocol: 'https',
@@ -13,3 +14,4 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
+

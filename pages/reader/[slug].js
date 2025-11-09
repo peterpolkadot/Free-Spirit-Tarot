@@ -163,18 +163,18 @@ export default function ReaderPage({ reader, topCard }) {
           <h2 className="text-2xl font-bold text-yellow-300 mb-4">🪄 Most Drawn Card</h2>
           <div className="inline-block bg-purple-900/40 border border-purple-700 p-4 rounded-xl">
             <div className="relative w-32 h-48 mx-auto mb-3">
-              {topCard.image_url ? (
-                <Image
-                  src={topCard.image_url}
-                  alt={topCard.card_name}
-                  fill
-                  className="rounded-md object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-purple-800/50 rounded-md flex items-center justify-center text-purple-300">
-                  🃏
-                </div>
-              )}
+             {topCard.image_url ? (
+  <img
+    src={topCard.image_url}
+    alt={topCard.card_name}
+    className="w-32 h-48 mx-auto rounded-md object-cover border border-purple-700 shadow-md"
+  />
+) : (
+  <div className="w-full h-full bg-purple-800/50 rounded-md flex items-center justify-center text-purple-300">
+    🃏
+  </div>
+)}
+
             </div>
             <h3 className="text-lg font-semibold text-yellow-300">{topCard.card_name}</h3>
             <p className="text-xs text-purple-400">

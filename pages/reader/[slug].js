@@ -181,7 +181,7 @@ export default function ReaderPage({ reader, topCards }) {
       {topCards && topCards.length > 0 && (
         <div className="text-center mt-10">
           <h2 className="text-2xl font-bold text-yellow-300 mb-4">
-            🪄 Most Drawn Cards
+            ✨ Most Drawn Cards
           </h2>
 
           <div className="flex justify-center flex-wrap gap-6">

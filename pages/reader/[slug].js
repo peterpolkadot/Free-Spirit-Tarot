@@ -89,13 +89,16 @@ export default function ReaderPage({ reader, topCard }) {
           <div className="flex justify-center flex-wrap gap-3">
             {matches.map((match, i) => (
               <Image
-                key={i}
-                src={match[1]}
-                alt={'Tarot Card ' + (i + 1)}
-                width={100}
-                height={160}
-                className="rounded-lg border border-purple-700 shadow-md"
-              />
+  key={i}
+  src={match[1]}
+  alt={'Tarot Card ' + (i + 1)}
+  width={100}
+  height={160}
+  placeholder="blur"
+  blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAnsBvDaKeEQAAAAASUVORK5CYII=" // tiny transparent base64
+  className="rounded-lg border border-purple-700 shadow-md transition-opacity duration-500"
+/>
+
             ))}
           </div>
         )}

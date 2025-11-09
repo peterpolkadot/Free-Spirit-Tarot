@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Image from 'next/image';
 
@@ -84,8 +84,10 @@ export default function ReaderPage({ reader, topCard }) {
             </div>
           ))}
           {isTyping && (
-            <div className="text-purple-400 bg-purple-900/40 p-3 rounded-lg w-fit animate-pulse">
-              ✨ {reader.name} is thinking...
+            <div className="flex items-center space-x-1 bg-purple-900/40 p-3 rounded-lg w-fit">
+              <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></span>
+              <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-150"></span>
+              <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-300"></span>
             </div>
           )}
         </div>

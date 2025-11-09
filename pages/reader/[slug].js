@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Image from 'next/image';
 
@@ -32,6 +32,14 @@ export default function ReaderPage({ reader, topCard }) {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  // 🌀 Auto-scroll to bottom
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [messages]);
 
   async function handleSend(e) {
     e.preventDefault();
@@ -51,13 +59,48 @@ export default function ReaderPage({ reader, topCard }) {
         })
       });
       const data = await res.json();
-      const botMessage = { role: 'assistant', content: data.reply || '✨ ...the spirits are quiet right now.' };
+
+      const botMessage = {
+        role: 'assistant',
+        content: data.reply || '✨ ...the spirits are quiet right now.'
+      };
       setMessages(prev => [...prev, botMessage]);
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Something went wrong. Try again soon.' }]);
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', content: '⚠️ Something went wrong. Try again soon.' }
+      ]);
     } finally {
       setIsTyping(false);
     }
+  }
+
+  // 🖼️ Helper to render messages with cards inline
+  function renderMessageContent(content) {
+    // Detect image markdown patterns
+    const cardPattern = /!\[Card.*?\]\((.*?)\)/g;
+    const matches = [...content.matchAll(cardPattern)];
+    const text = content.replace(cardPattern, '').trim();
+
+    return (
+      <>
+        {text && <p className="whitespace-pre-wrap mb-2">{text}</p>}
+        {matches.length > 0 && (
+          <div className="flex justify-center flex-wrap gap-3">
+            {matches.map((match, i) => (
+              <Image
+                key={i}
+                src={match[1]}
+                alt={'Tarot Card ' + (i + 1)}
+                width={100}
+                height={160}
+                className="rounded-lg border border-purple-700 shadow-md"
+              />
+            ))}
+          </div>
+        )}
+      </>
+    );
   }
 
   return (
@@ -69,6 +112,7 @@ export default function ReaderPage({ reader, topCard }) {
         <p className="text-purple-200">{reader.tagline}</p>
       </div>
 
+      {/* 💬 Chat window */}
       <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 flex flex-col h-[450px]">
         <div className="flex-1 overflow-y-auto mb-4 space-y-3 scrollbar-thin scrollbar-thumb-purple-700">
           {messages.map((msg, i) => (
@@ -80,7 +124,7 @@ export default function ReaderPage({ reader, topCard }) {
                   : 'text-yellow-200 bg-purple-800/40 p-3 rounded-lg self-end w-fit max-w-[80%]'
               }
             >
-              {msg.content}
+              {renderMessageContent(msg.content)}
             </div>
           ))}
           {isTyping && (
@@ -90,6 +134,7 @@ export default function ReaderPage({ reader, topCard }) {
               <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-300"></span>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         <form onSubmit={handleSend} className="flex">
@@ -109,6 +154,7 @@ export default function ReaderPage({ reader, topCard }) {
         </form>
       </div>
 
+      {/* 🪄 Most Drawn Card */}
       {topCard && (
         <div className="text-center mt-10">
           <h2 className="text-2xl font-bold text-yellow-300 mb-4">🪄 Most Drawn Card</h2>

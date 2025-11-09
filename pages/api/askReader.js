@@ -77,11 +77,9 @@ export default async function handler(req, res) {
     if (msg.tool_calls) {
       const cards = await getThreeCardReading();
       await logCardStats(cards, reader_alias);
-      const reply =
-        \`Your three cards are:\\n\\n\` +
-        cards.map(c => \`**\${c.name}** – \${c.meaning}\`).join('\\n\\n') +
-        \`\\n\\n\` +
-        cards.map((c,i) => \`![Card \${i+1}](\${c.image_url})\`).join(' ');
+      const cardDescriptions = cards.map(c => '**' + c.name + '** – ' + c.meaning).join('\n\n');
+      const cardImages = cards.map((c,i) => '![Card ' + (i+1) + '](' + c.image_url + ')').join(' ');
+      const reply = 'Your three cards are:\n\n' + cardDescriptions + '\n\n' + cardImages;
       return res.json({ reply, cards });
     }
     const reply = msg.content?.trim() || '✨ The spirits are quiet today.';

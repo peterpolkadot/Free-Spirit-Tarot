@@ -1,8 +1,7 @@
 
+import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronUp } from 'lucide-react';
+import Image from 'next/image';
 
 export async function getStaticPaths() {
   const { data } = await supabase.from('readers').select('alias');
@@ -11,121 +10,128 @@ export async function getStaticPaths() {
 
 export async function getStaticProps({ params }) {
   const { data: reader } = await supabase.from('readers').select('*').eq('alias', params.slug).single();
-  return { props: { reader } };
+  if (!reader) return { notFound: true };
+
+  const { data: topCard } = await supabase
+    .from('card_stats')
+    .select('*')
+    .eq('reader', reader.alias)
+    .order('draw_count', { ascending: false })
+    .limit(1)
+    .single();
+
+  return {
+    props: { reader, topCard: topCard || null },
+    revalidate: 86400
+  };
 }
 
-export default function ReaderPage({ reader }) {
+export default function ReaderPage({ reader, topCard }) {
+  const [messages, setMessages] = useState([
+    { role: 'assistant', content: `✨ I am ${reader.name}. ${reader.tagline}` }
+  ]);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const messagesEndRef = useRef(null);
-  const [showTop, setShowTop] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
 
-  useEffect(() => {
-    const onScroll = () => setShowTop(window.scrollY > 300);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      const timeout = setTimeout(() => {
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      }, 150);
-      return () => clearTimeout(timeout);
-    }
-  }, [messages]);
-
-  async function sendMessage() {
+  async function handleSend(e) {
+    e.preventDefault();
     if (!input.trim()) return;
-    setLoading(true);
-    const newMessages = [...messages, { role: 'user', content: input }];
+    const userMessage = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setIsTyping(true);
+
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('/api/askReader', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages, readerAlias: reader.alias }),
+        body: JSON.stringify({
+          reader_alias: reader.alias,
+          message: input
+        })
       });
       const data = await res.json();
-      setMessages([...newMessages, { role: 'assistant', content: data.reply }]);
+      const botMessage = { role: 'assistant', content: data.reply || '✨ ...the spirits are quiet right now.' };
+      setMessages(prev => [...prev, botMessage]);
     } catch (err) {
-      console.error(err);
+      setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Something went wrong. Try again soon.' }]);
     } finally {
-      setLoading(false);
+      setIsTyping(false);
     }
   }
 
   return (
-    <div className="max-w-3xl mx-auto text-center mt-10 px-4 pb-20">
-      {/* ✨ Animated header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, ease: 'easeOut' }} className="mb-8">
+    <div className="max-w-2xl mx-auto space-y-10">
+      <div className="text-center">
         <h1 className="text-3xl font-bold text-yellow-300 mb-2">
-          {reader.emoji || '🔮'}{' '}
-          <motion.span
-            key={messages.length}
-            initial={{ textShadow: '0 0 0px #fff' }}
-            animate={{
-              textShadow: [
-                '0 0 5px #ffb700',
-                '0 0 15px #ffb700',
-                '0 0 25px #ffb700',
-                '0 0 15px #ffb700',
-                '0 0 5px #ffb700',
-                '0 0 0px #ffb700',
-              ],
-              color: ['#fff8dc', '#ffe36e', '#fff8dc'],
-            }}
-            transition={{ duration: 1.5, ease: 'easeInOut' }}
-            className="inline-block filter drop-shadow-[0_0_8px_rgba(255,215,0,0.6)]"
-          >
-            {reader.name}
-          </motion.span>
+          {reader.emoji || '🔮'} {reader.name}
         </h1>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5, duration: 1 }} className="text-purple-200">
-          {reader.tagline}
-        </motion.p>
-      </motion.div>
+        <p className="text-purple-200">{reader.tagline}</p>
+      </div>
 
-      {/* 💬 Messages */}
-      <div className="space-y-3 text-left overflow-y-auto max-h-[65vh] pr-2">
-        {messages.map((m, i) => {
-          const isUser = m.role === 'user';
-          const cardPattern = /!\[Card.*?\]\((.*?)\)/g;
-          const matches = [...m.content.matchAll(cardPattern)];
-          return (
-            <motion.div key={i} className={`p-3 rounded-lg ${isUser ? 'bg-purple-800/50' : 'bg-purple-900/50'}`} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-              <strong>{isUser ? 'You' : reader.name}:</strong>
-              {matches.length > 0 && (
-                <div className="flex justify-center gap-3 mt-3 mb-2">
-                  {matches.map((match, j) => (
-                    <motion.img key={j} src={match[1]} alt={'Tarot Card ' + (j + 1)} className="w-28 h-auto rounded-lg border border-purple-700 shadow-md" initial={{ rotateY: 90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} transition={{ delay: j * 0.3, duration: 0.6 }} />
-                  ))}
+      <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 flex flex-col h-[450px]">
+        <div className="flex-1 overflow-y-auto mb-4 space-y-3 scrollbar-thin scrollbar-thumb-purple-700">
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              className={
+                msg.role === 'assistant'
+                  ? 'text-purple-200 bg-purple-900/40 p-3 rounded-lg w-fit max-w-[80%]'
+                  : 'text-yellow-200 bg-purple-800/40 p-3 rounded-lg self-end w-fit max-w-[80%]'
+              }
+            >
+              {msg.content}
+            </div>
+          ))}
+          {isTyping && (
+            <div className="text-purple-400 bg-purple-900/40 p-3 rounded-lg w-fit animate-pulse">
+              ✨ {reader.name} is thinking...
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSend} className="flex">
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder="Ask your tarot reader..."
+            className="flex-1 bg-purple-800/30 border border-purple-700 rounded-l-lg px-4 py-2 text-purple-100 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-yellow-400 text-purple-900 font-semibold rounded-r-lg hover:bg-yellow-300 transition"
+          >
+            Send
+          </button>
+        </form>
+      </div>
+
+      {topCard && (
+        <div className="text-center mt-10">
+          <h2 className="text-2xl font-bold text-yellow-300 mb-4">🪄 Most Drawn Card</h2>
+          <div className="inline-block bg-purple-900/40 border border-purple-700 p-4 rounded-xl">
+            <div className="relative w-32 h-48 mx-auto mb-3">
+              {topCard.image_url ? (
+                <Image
+                  src={topCard.image_url}
+                  alt={topCard.card_name}
+                  fill
+                  className="rounded-md object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-purple-800/50 rounded-md flex items-center justify-center text-purple-300">
+                  🃏
                 </div>
               )}
-              <p className="mt-2 whitespace-pre-wrap">{m.content.replace(/!\[Card.*?\]\(.*?\)/g, '')}</p>
-            </motion.div>
-          );
-        })}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* ✉️ Input */}
-      <div className="mt-6 flex gap-2">
-        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendMessage()} className="flex-1 p-3 rounded-lg bg-purple-950 border border-purple-700 text-white" placeholder="Ask your tarot reader..." />
-        <button onClick={sendMessage} disabled={loading} className="bg-purple-700 hover:bg-purple-600 text-white px-4 rounded-lg transition">
-          {loading ? 'Reading…' : 'Send'}
-        </button>
-      </div>
-
-      {/* 💎 Scroll to top crystal */}
-      {showTop && (
-        <motion.button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="fixed bottom-8 right-8 bg-purple-700/80 hover:bg-purple-600 text-white p-3 rounded-full shadow-lg backdrop-blur-md border border-purple-400">
-          <ChevronUp size={24} />
-        </motion.button>
+            </div>
+            <h3 className="text-lg font-semibold text-yellow-300">{topCard.card_name}</h3>
+            <p className="text-xs text-purple-400">
+              Drawn {topCard.draw_count} times
+            </p>
+          </div>
+        </div>
       )}
-
-      <p className="text-xs text-purple-500 mt-8">© 2025 Free Spirit Tarot</p>
     </div>
   );
 }

@@ -64,55 +64,32 @@ async function logCardStats(cards, readerAlias) {
 
 // 💬 Chat handler
 export default async function handler(req, res) {
-  if (req.method !== 'POST')
-    return res.status(405).json({ error: 'Method Not Allowed' });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   const { reader_alias, message } = req.body;
   if (!reader_alias || !message)
-    return res
-      .status(400)
-      .json({ reply: 'Missing reader_alias or message in request body.' });
+    return res.status(400).json({ reply: 'Missing reader_alias or message.' });
 
   try {
-    // 🪄 Ask OpenAI and allow tarot tool calls
+    // Prepare the OpenAI conversation
+    const messages = [
+      { role: 'system', content: 'You are a wise and intuitive tarot reader.' },
+      { role: 'user', content: message },
+    ];
+
     const completion = await client.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.8,
-      messages: [
-        { role: 'system', content: 'You are a wise and intuitive tarot reader.' },
-        { role: 'user', content: message },
-      ],
-      tools: [
-        {
-          type: 'function',
-          function: {
-            name: 'getThreeCardReading',
-            description: 'Draws three random tarot cards and returns their meanings.',
-            parameters: { type: 'object', properties: {} },
-          },
-        },
-      ],
+      messages,
     });
 
-    const msg = completion.choices[0].message;
+    const reply = completion.choices[0].message?.content?.trim() || '✨ The spirits are quiet today.';
 
-    // 🎴 If OpenAI triggers a card draw
-    if (msg.tool_calls) {
-      const cards = await getThreeCardReading();
-      await logCardStats(cards, reader_alias);
+    // Simulate card drawing and stat logging
+    const cards = await getThreeCardReading();
+    await logCardStats(cards, reader_alias);
 
-      const reply =
-        `Your three cards are:\n\n` +
-        cards.map((c) => `**${c.name}** – ${c.meaning}`).join('\n\n') +
-        `\n\n` +
-        cards.map((c, i) => `![Card ${i + 1}](${c.image_url})`).join(' ');
-
-      return res.json({ reply, cards });
-    }
-
-    // 💭 Otherwise, return the text response
-    const reply = msg.content?.trim() || '✨ The spirits are quiet today.';
-    res.json({ reply });
+    res.json({ reply, cards });
   } catch (err) {
     console.error('Chat error:', err);
     res.status(500).json({ reply: 'Sorry, something went wrong.' });

@@ -12,18 +12,33 @@ export async function getStaticProps({ params }) {
   const { data: reader } = await supabase.from('readers').select('*').eq('alias', params.slug).single();
   if (!reader) return { notFound: true };
 
-  const { data: topCard } = await supabase
-    .from('card_stats')
-    .select('*')
-    .eq('reader', reader.alias)
-    .order('draw_count', { ascending: false })
-    .limit(1)
+const { data: topCardStat } = await supabase
+  .from('card_stats')
+  .select('*')
+  .eq('reader', reader.alias)
+  .order('draw_count', { ascending: false })
+  .limit(1)
+  .single();
+
+let topCard = topCardStat;
+
+if (topCardStat?.card_name) {
+  const { data: cardInfo } = await supabase
+    .from('cards')
+    .select('image_url')
+    .eq('name', topCardStat.card_name)
     .single();
 
-  return {
-    props: { reader, topCard: topCard || null },
-    revalidate: 86400
-  };
+  if (cardInfo?.image_url) {
+    topCard = { ...topCardStat, image_url: cardInfo.image_url };
+  }
+}
+
+return {
+  props: { reader, topCard: topCard || null },
+  revalidate: 86400
+};
+
 }
 
 export default function ReaderPage({ reader, topCard }) {

@@ -9,37 +9,43 @@ export async function getStaticPaths() {
 }
 
 export async function getStaticProps({ params }) {
-  const { data: reader } = await supabase.from('readers').select('*').eq('alias', params.slug).single();
-  if (!reader) return { notFound: true };
-
-const { data: topCardStat } = await supabase
-  .from('card_stats')
-  .select('*')
-  .eq('reader', reader.alias)
-  .order('draw_count', { ascending: false })
-  .limit(1)
-  .single();
-
-let topCard = topCardStat;
-
-if (topCardStat?.card_name) {
-  const { data: cardInfo } = await supabase
-    .from('cards')
-    .select('image_url')
-    .eq('name', topCardStat.card_name)
+  const { data: reader } = await supabase
+    .from('readers')
+    .select('*')
+    .eq('alias', params.slug)
     .single();
 
-  if (cardInfo?.image_url) {
-    topCard = { ...topCardStat, image_url: cardInfo.image_url };
+  if (!reader) return { notFound: true };
+
+  // 🔢 Fetch top 3 cards by draw count
+  const { data: topCardStats } = await supabase
+    .from('card_stats')
+    .select('*')
+    .eq('reader', reader.alias)
+    .order('draw_count', { ascending: false })
+    .limit(3);
+
+  // 🎴 Enrich with card images
+  const topCards = [];
+  for (const stat of topCardStats || []) {
+    const { data: cardInfo } = await supabase
+      .from('cards')
+      .select('image_url')
+      .eq('name', stat.card_name)
+      .single();
+
+    topCards.push({
+      ...stat,
+      image_url: cardInfo?.image_url || null,
+    });
   }
+
+  return {
+    props: { reader, topCards },
+    revalidate: 86400,
+  };
 }
 
-return {
-  props: { reader, topCard: topCard || null },
-  revalidate: 86400
-};
-
-}
 
 export default function ReaderPage({ reader, topCard }) {
   const [messages, setMessages] = useState([
@@ -172,32 +178,42 @@ export default function ReaderPage({ reader, topCard }) {
         </form>
       </div>
 
-      {/* 🪄 Most Drawn Card */}
-      {topCard && (
-        <div className="text-center mt-10">
-          <h2 className="text-2xl font-bold text-yellow-300 mb-4">🪄 Most Drawn Card</h2>
-          <div className="inline-block bg-purple-900/40 border border-purple-700 p-4 rounded-xl">
-            <div className="relative w-32 h-48 mx-auto mb-3">
-             {topCard.image_url ? (
-  <img
-    src={topCard.image_url}
-    alt={topCard.card_name}
-    className="w-32 h-48 mx-auto rounded-md object-cover border border-purple-700 shadow-md"
-  />
-) : (
-  <div className="w-full h-full bg-purple-800/50 rounded-md flex items-center justify-center text-purple-300">
-    🃏
+{/* 🪄 Most Drawn Cards */}
+{topCards && topCards.length > 0 && (
+  <div className="text-center mt-10">
+    <h2 className="text-2xl font-bold text-yellow-300 mb-4">
+      🪄 Most Drawn Cards
+    </h2>
+
+    <div className="flex justify-center flex-wrap gap-6">
+      {topCards.map((card, i) => (
+        <div
+          key={i}
+          className="bg-purple-900/40 border border-purple-700 p-3 rounded-xl w-28"
+        >
+          <div className="relative w-16 h-24 mx-auto mb-2">
+            {card.image_url ? (
+              <Image
+                src={card.image_url}
+                alt={card.card_name}
+                fill
+                className="rounded-md object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-purple-800/50 rounded-md flex items-center justify-center text-purple-300">
+                🃏
+              </div>
+            )}
+          </div>
+          <h3 className="text-sm font-semibold text-yellow-300 truncate">
+            {card.card_name}
+          </h3>
+          <p className="text-xs text-purple-400">
+            {card.draw_count}× drawn
+          </p>
+        </div>
+      ))}
+    </div>
   </div>
 )}
 
-            </div>
-            <h3 className="text-lg font-semibold text-yellow-300">{topCard.card_name}</h3>
-            <p className="text-xs text-purple-400">
-              Drawn {topCard.draw_count} times
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}

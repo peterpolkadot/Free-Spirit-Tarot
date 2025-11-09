@@ -1,3 +1,15 @@
+
 /** @type {import('next').NextConfig} */
-const nextConfig = { reactStrictMode: true };
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'fstarot.com',
+        pathname: '/wp-content/uploads/**',
+      },
+    ],
+  },
+};
+
 module.exports = nextConfig;

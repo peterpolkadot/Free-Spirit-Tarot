@@ -47,7 +47,7 @@ export async function getStaticProps({ params }) {
 }
 
 
-export default function ReaderPage({ reader, topCard }) {
+export default function ReaderPage({ reader, topCards }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: `✨ I am ${reader.name}. ${reader.tagline}` }
   ]);
@@ -110,16 +110,15 @@ export default function ReaderPage({ reader, topCard }) {
           <div className="flex justify-center flex-wrap gap-3">
             {matches.map((match, i) => (
               <Image
-  key={i}
-  src={match[1]}
-  alt={'Tarot Card ' + (i + 1)}
-  width={100}
-  height={160}
-  placeholder="blur"
-  blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAnsBvDaKeEQAAAAASUVORK5CYII=" // tiny transparent base64
-  className="rounded-lg border border-purple-700 shadow-md transition-opacity duration-500"
-/>
-
+                key={i}
+                src={match[1]}
+                alt={'Tarot Card ' + (i + 1)}
+                width={100}
+                height={160}
+                placeholder="blur"
+                blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAnsBvDaKeEQAAAAASUVORK5CYII="
+                className="rounded-lg border border-purple-700 shadow-md transition-opacity duration-500"
+              />
             ))}
           </div>
         )}
@@ -178,42 +177,44 @@ export default function ReaderPage({ reader, topCard }) {
         </form>
       </div>
 
-{/* 🪄 Most Drawn Cards */}
-{topCards && topCards.length > 0 && (
-  <div className="text-center mt-10">
-    <h2 className="text-2xl font-bold text-yellow-300 mb-4">
-      🪄 Most Drawn Cards
-    </h2>
+      {/* 🪄 Most Drawn Cards */}
+      {topCards && topCards.length > 0 && (
+        <div className="text-center mt-10">
+          <h2 className="text-2xl font-bold text-yellow-300 mb-4">
+            🪄 Most Drawn Cards
+          </h2>
 
-    <div className="flex justify-center flex-wrap gap-6">
-      {topCards.map((card, i) => (
-        <div
-          key={i}
-          className="bg-purple-900/40 border border-purple-700 p-3 rounded-xl w-28"
-        >
-          <div className="relative w-16 h-24 mx-auto mb-2">
-            {card.image_url ? (
-              <Image
-                src={card.image_url}
-                alt={card.card_name}
-                fill
-                className="rounded-md object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-purple-800/50 rounded-md flex items-center justify-center text-purple-300">
-                🃏
+          <div className="flex justify-center flex-wrap gap-6">
+            {topCards.map((card, i) => (
+              <div
+                key={i}
+                className="bg-purple-900/40 border border-purple-700 p-3 rounded-xl w-28"
+              >
+                <div className="relative w-16 h-24 mx-auto mb-2">
+                  {card.image_url ? (
+                    <Image
+                      src={card.image_url}
+                      alt={card.card_name}
+                      fill
+                      className="rounded-md object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-purple-800/50 rounded-md flex items-center justify-center text-purple-300">
+                      🃏
+                    </div>
+                  )}
+                </div>
+                <h3 className="text-sm font-semibold text-yellow-300 truncate">
+                  {card.card_name}
+                </h3>
+                <p className="text-xs text-purple-400">
+                  {card.draw_count}× drawn
+                </p>
               </div>
-            )}
+            ))}
           </div>
-          <h3 className="text-sm font-semibold text-yellow-300 truncate">
-            {card.card_name}
-          </h3>
-          <p className="text-xs text-purple-400">
-            {card.draw_count}× drawn
-          </p>
         </div>
-      ))}
+      )}
     </div>
-  </div>
-)}
-
+  );
+}

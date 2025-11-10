@@ -2,6 +2,33 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Image from 'next/image';
+import Head from 'next/head';
+
+// ⭐ Helper to generate reader schema
+function getReaderSchemaMarkup(reader) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: reader.name,
+    jobTitle: 'Tarot Reader',
+    description: reader.description || reader.tagline,
+    url: `https://fstarot.com/reader/${reader.alias}`,
+    knowsAbout: reader.specialty || 'Tarot Reading',
+    offers: {
+      '@type': 'Service',
+      serviceType: 'Tarot Reading',
+      description: reader.reading_style || 'Personalized tarot card readings',
+      provider: {
+        '@type': 'Person',
+        name: reader.name,
+      },
+      areaServed: {
+        '@type': 'Place',
+        name: 'Global',
+      },
+    },
+  };
+}
 
 export async function getStaticPaths() {
   const { data } = await supabase.from('readers').select('alias');
@@ -46,7 +73,6 @@ export async function getStaticProps({ params }) {
   };
 }
 
-
 export default function ReaderPage({ reader, topCards }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: `✨ I am ${reader.name}. ${reader.tagline}` }
@@ -54,6 +80,12 @@ export default function ReaderPage({ reader, topCards }) {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // ⭐ SEO: Generate schema and metadata
+  const schemaMarkup = getReaderSchemaMarkup(reader);
+  const pageTitle = reader.meta_title || `${reader.name} - Tarot Reader | Free Spirit Tarot`;
+  const pageDescription = reader.meta_description || reader.tagline;
+  const pageKeywords = reader.seo_keywords || '';
 
   // 🌀 Auto-scroll to bottom
   useEffect(() => {
@@ -98,7 +130,6 @@ export default function ReaderPage({ reader, topCards }) {
 
   // 🖼️ Helper to render messages with cards inline
   function renderMessageContent(content) {
-    // Detect image markdown patterns
     const cardPattern = /!\[Card.*?\]\((.*?)\)/g;
     const matches = [...content.matchAll(cardPattern)];
     const text = content.replace(cardPattern, '').trim();
@@ -116,7 +147,7 @@ export default function ReaderPage({ reader, topCards }) {
                 width={100}
                 height={160}
                 placeholder="blur"
-                blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAnsBvDaKeEQAAAAASUVORK5CYII="
+                blurDataURL=""
                 className="rounded-lg border border-purple-700 shadow-md transition-opacity duration-500"
               />
             ))}
@@ -127,94 +158,116 @@ export default function ReaderPage({ reader, topCards }) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-10">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-yellow-300 mb-2">
-          {reader.emoji || '🔮'} {reader.name}
-        </h1>
-        <p className="text-purple-200">{reader.tagline}</p>
-      </div>
-
-      {/* 💬 Chat window */}
-      <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 flex flex-col h-[450px]">
-        <div className="flex-1 overflow-y-auto mb-4 space-y-3 scrollbar-thin scrollbar-thumb-purple-700">
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={
-                msg.role === 'assistant'
-                  ? 'text-purple-200 bg-purple-900/40 p-3 rounded-lg w-fit max-w-[80%]'
-                  : 'text-yellow-200 bg-purple-800/40 p-3 rounded-lg self-end w-fit max-w-[80%]'
-              }
-            >
-              {renderMessageContent(msg.content)}
-            </div>
-          ))}
-          {isTyping && (
-            <div className="flex items-center space-x-1 bg-purple-900/40 p-3 rounded-lg w-fit">
-              <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></span>
-              <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-150"></span>
-              <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-300"></span>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
+    <>
+      {/* ⭐ SEO: Meta tags and schema */}
+      <Head>
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+        {pageKeywords && <meta name="keywords" content={pageKeywords} />}
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:type" content="profile" />
+        <meta property="og:url" content={`https://fstarot.com/reader/${reader.alias}`} />
+        <meta property="og:site_name" content="Free Spirit Tarot" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <link rel="canonical" href={`https://fstarot.com/reader/${reader.alias}`} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
+        />
+      </Head>
+      
+      <div className="max-w-2xl mx-auto space-y-10">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-yellow-300 mb-2">
+            {reader.emoji || '🔮'} {reader.name}
+          </h1>
+          <p className="text-purple-200">{reader.tagline}</p>
         </div>
 
-        <form onSubmit={handleSend} className="flex">
-          <input
-            type="text"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="Ask your tarot reader..."
-            className="flex-1 bg-purple-800/30 border border-purple-700 rounded-l-lg px-4 py-2 text-purple-100 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2 bg-yellow-400 text-purple-900 font-semibold rounded-r-lg hover:bg-yellow-300 transition"
-          >
-            Send
-          </button>
-        </form>
-      </div>
-
-      {/* 🪄 Most Drawn Cards */}
-      {topCards && topCards.length > 0 && (
-        <div className="text-center mt-10">
-          <h2 className="text-2xl font-bold text-yellow-300 mb-4">
-            ✨ Most Drawn Cards
-          </h2>
-
-          <div className="flex justify-center flex-wrap gap-6">
-            {topCards.map((card, i) => (
+        {/* 💬 Chat window */}
+        <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 flex flex-col h-[450px]">
+          <div className="flex-1 overflow-y-auto mb-4 space-y-3 scrollbar-thin scrollbar-thumb-purple-700">
+            {messages.map((msg, i) => (
               <div
                 key={i}
-                className="bg-purple-900/40 border border-purple-700 p-3 rounded-xl w-28"
+                className={
+                  msg.role === 'assistant'
+                    ? 'text-purple-200 bg-purple-900/40 p-3 rounded-lg w-fit max-w-[80%]'
+                    : 'text-yellow-200 bg-purple-800/40 p-3 rounded-lg self-end w-fit max-w-[80%]'
+                }
               >
-                <div className="relative w-16 h-24 mx-auto mb-2">
-                  {card.image_url ? (
-                    <Image
-                      src={card.image_url}
-                      alt={card.card_name}
-                      fill
-                      className="rounded-md object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-purple-800/50 rounded-md flex items-center justify-center text-purple-300">
-                      🃏
-                    </div>
-                  )}
-                </div>
-                <h3 className="text-sm font-semibold text-yellow-300 truncate">
-                  {card.card_name}
-                </h3>
-                <p className="text-xs text-purple-400">
-                  {card.draw_count}× drawn
-                </p>
+                {renderMessageContent(msg.content)}
               </div>
             ))}
+            {isTyping && (
+              <div className="flex items-center space-x-1 bg-purple-900/40 p-3 rounded-lg w-fit">
+                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></span>
+                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-150"></span>
+                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-300"></span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
+
+          <form onSubmit={handleSend} className="flex">
+            <input
+              type="text"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder="Ask your tarot reader..."
+              className="flex-1 bg-purple-800/30 border border-purple-700 rounded-l-lg px-4 py-2 text-purple-100 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-yellow-400 text-purple-900 font-semibold rounded-r-lg hover:bg-yellow-300 transition"
+            >
+              Send
+            </button>
+          </form>
         </div>
-      )}
-    </div>
+
+        {/* 🪄 Most Drawn Cards */}
+        {topCards && topCards.length > 0 && (
+          <div className="text-center mt-10">
+            <h2 className="text-2xl font-bold text-yellow-300 mb-4">
+              ✨ Most Drawn Cards
+            </h2>
+
+            <div className="flex justify-center flex-wrap gap-6">
+              {topCards.map((card, i) => (
+                <div
+                  key={i}
+                  className="bg-purple-900/40 border border-purple-700 p-3 rounded-xl w-28"
+                >
+                  <div className="relative w-16 h-24 mx-auto mb-2">
+                    {card.image_url ? (
+                      <Image
+                        src={card.image_url}
+                        alt={card.card_name}
+                        fill
+                        className="rounded-md object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-purple-800/50 rounded-md flex items-center justify-center text-purple-300">
+                        🃏
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="text-sm font-semibold text-yellow-300 truncate">
+                    {card.card_name}
+                  </h3>
+                  <p className="text-xs text-purple-400">
+                    {card.draw_count}× drawn
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

@@ -8,11 +8,15 @@ const driveToDirect = (url) => {
   if (!url) return null;
   if (url.includes('drive.google.com/file/d/')) {
     return url
-      .replace('https://drive.google.com/file/d/', 'https://drive.google.com/uc?export=view&id=')
+      .replace('https://drive.google.com/file/d/', 'https://drive.google.com/uc?export=download&id=')
       .replace(/\/view\?.*$/, '');
+  }
+  if (url.includes('drive.google.com/open?id=')) {
+    return url.replace('open?id=', 'uc?export=download&id=');
   }
   return url;
 };
+
 
 // ⭐ Helper to generate reader schema
 function getReaderSchemaMarkup(reader) {

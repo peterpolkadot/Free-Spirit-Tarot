@@ -7,15 +7,14 @@ import Head from 'next/head';
 const driveToDirect = (url) => {
   if (!url) return null;
   if (url.includes('drive.google.com/file/d/')) {
-    return url
-      .replace('https://drive.google.com/file/d/', 'https://drive.google.com/uc?export=download&id=')
-      .replace(/\/view\?.*$/, '');
-  }
-  if (url.includes('drive.google.com/open?id=')) {
-    return url.replace('open?id=', 'uc?export=download&id=');
+    const fileId = url.match(//d/(.*?)//)?.[1];
+    return fileId
+      ? 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w600'
+      : url;
   }
   return url;
 };
+
 
 
 // ⭐ Helper to generate reader schema

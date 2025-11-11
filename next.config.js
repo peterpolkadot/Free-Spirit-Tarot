@@ -9,6 +9,11 @@ const nextConfig = {
         hostname: 'fstarot.com',
         pathname: '/wp-content/uploads/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'drive.google.com',
+        pathname: '/uc**',
+      },
     ],
   },
 };

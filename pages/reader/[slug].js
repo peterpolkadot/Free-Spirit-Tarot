@@ -4,6 +4,16 @@ import { supabase } from '@/lib/supabaseClient';
 import Image from 'next/image';
 import Head from 'next/head';
 
+const driveToDirect = (url) => {
+  if (!url) return null;
+  if (url.includes('drive.google.com/file/d/')) {
+    return url
+      .replace('https://drive.google.com/file/d/', 'https://drive.google.com/uc?export=view&id=')
+      .replace(/\/view\?.*$/, '');
+  }
+  return url;
+};
+
 // ⭐ Helper to generate reader schema
 function getReaderSchemaMarkup(reader) {
   return {
@@ -14,19 +24,6 @@ function getReaderSchemaMarkup(reader) {
     description: reader.description || reader.tagline,
     url: `https://fstarot.com/reader/${reader.alias}`,
     knowsAbout: reader.specialty || 'Tarot Reading',
-    offers: {
-      '@type': 'Service',
-      serviceType: 'Tarot Reading',
-      description: reader.reading_style || 'Personalized tarot card readings',
-      provider: {
-        '@type': 'Person',
-        name: reader.name,
-      },
-      areaServed: {
-        '@type': 'Place',
-        name: 'Global',
-      },
-    },
   };
 }
 
@@ -81,17 +78,16 @@ export default function ReaderPage({ reader, topCards }) {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // ⭐ SEO: Generate schema and metadata
   const schemaMarkup = getReaderSchemaMarkup(reader);
   const pageTitle = reader.meta_title || `${reader.name} - Tarot Reader | Free Spirit Tarot`;
   const pageDescription = reader.meta_description || reader.tagline;
   const pageKeywords = reader.seo_keywords || '';
+  const imageSrc =
+    driveToDirect(reader.image_url) ||
+    'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png';
 
-  // 🌀 Auto-scroll to bottom
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   async function handleSend(e) {
@@ -106,13 +102,9 @@ export default function ReaderPage({ reader, topCards }) {
       const res = await fetch('/api/askReader', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reader_alias: reader.alias,
-          message: input
-        })
+        body: JSON.stringify({ reader_alias: reader.alias, message: input })
       });
       const data = await res.json();
-
       const botMessage = {
         role: 'assistant',
         content: data.reply || '✨ ...the spirits are quiet right now.'
@@ -128,38 +120,8 @@ export default function ReaderPage({ reader, topCards }) {
     }
   }
 
-  // 🖼️ Helper to render messages with cards inline
-  function renderMessageContent(content) {
-    const cardPattern = /!\[Card.*?\]\((.*?)\)/g;
-    const matches = [...content.matchAll(cardPattern)];
-    const text = content.replace(cardPattern, '').trim();
-
-    return (
-      <>
-        {text && <p className="whitespace-pre-wrap mb-2">{text}</p>}
-        {matches.length > 0 && (
-          <div className="flex justify-center flex-wrap gap-3">
-            {matches.map((match, i) => (
-              <Image
-                key={i}
-                src={match[1]}
-                alt={'Tarot Card ' + (i + 1)}
-                width={100}
-                height={160}
-                placeholder="blur"
-                blurDataURL=""
-                className="rounded-lg border border-purple-700 shadow-md transition-opacity duration-500"
-              />
-            ))}
-          </div>
-        )}
-      </>
-    );
-  }
-
   return (
     <>
-      {/* ⭐ SEO: Meta tags and schema */}
       <Head>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
@@ -178,43 +140,37 @@ export default function ReaderPage({ reader, topCards }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
         />
       </Head>
-      
+
       <div className="max-w-2xl mx-auto space-y-10">
-      <div className="text-center space-y-4">
-  {/* 🖼️ Reader Portrait */}
-  {reader.image_url && (
-    <div className="flex justify-center">
-      <Image
-        src={reader.image_url}
-        alt={reader.name}
-        width={240}
-        height={240}
-        className="rounded-full border-4 border-purple-700 shadow-xl object-cover"
-      />
-    </div>
-  )}
+        {/* 🌙 Reader Header */}
+        <div className="flex flex-col sm:flex-row items-center sm:items-start sm:space-x-6 text-center sm:text-left">
+          <Image
+            src={imageSrc}
+            alt={reader.name}
+            width={120}
+            height={120}
+            className="rounded-full border-2 border-purple-700 shadow-md object-cover mb-4 sm:mb-0"
+          />
+          <div>
+            <h1 className="text-3xl font-bold text-yellow-300 mb-1">
+              {reader.emoji || '🔮'} {reader.name}
+            </h1>
+            <p className="text-purple-200 italic">{reader.tagline}</p>
+          </div>
+        </div>
 
-  {/* 🌙 Name + Tagline */}
-  <h1 className="text-3xl font-bold text-yellow-300 mb-2">
-    {reader.emoji || '🔮'} {reader.name}
-  </h1>
-  <p className="text-purple-200">{reader.tagline}</p>
-</div>
-
-
-        {/* 💬 Chat window */}
+        {/* 💬 Chat Window */}
         <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 flex flex-col h-[450px]">
           <div className="flex-1 overflow-y-auto mb-4 space-y-3 scrollbar-thin scrollbar-thumb-purple-700">
             {messages.map((msg, i) => (
               <div
                 key={i}
-                className={
-                  msg.role === 'assistant'
-                    ? 'text-purple-200 bg-purple-900/40 p-3 rounded-lg w-fit max-w-[80%]'
-                    : 'text-yellow-200 bg-purple-800/40 p-3 rounded-lg self-end w-fit max-w-[80%]'
+                className={msg.role === 'assistant'
+                  ? 'text-purple-200 bg-purple-900/40 p-3 rounded-lg w-fit max-w-[80%]'
+                  : 'text-yellow-200 bg-purple-800/40 p-3 rounded-lg self-end w-fit max-w-[80%]'
                 }
               >
-                {renderMessageContent(msg.content)}
+                {msg.content}
               </div>
             ))}
             {isTyping && (
@@ -247,10 +203,7 @@ export default function ReaderPage({ reader, topCards }) {
         {/* 🪄 Most Drawn Cards */}
         {topCards && topCards.length > 0 && (
           <div className="text-center mt-10">
-            <h2 className="text-2xl font-bold text-yellow-300 mb-4">
-              ✨ Most Drawn Cards
-            </h2>
-
+            <h2 className="text-2xl font-bold text-yellow-300 mb-4">✨ Most Drawn Cards</h2>
             <div className="flex justify-center flex-wrap gap-6">
               {topCards.map((card, i) => (
                 <div
@@ -260,7 +213,7 @@ export default function ReaderPage({ reader, topCards }) {
                   <div className="relative w-16 h-24 mx-auto mb-2">
                     {card.image_url ? (
                       <Image
-                        src={card.image_url}
+                        src={driveToDirect(card.image_url) || card.image_url}
                         alt={card.card_name}
                         fill
                         className="rounded-md object-cover"
@@ -274,9 +227,7 @@ export default function ReaderPage({ reader, topCards }) {
                   <h3 className="text-sm font-semibold text-yellow-300 truncate">
                     {card.card_name}
                   </h3>
-                  <p className="text-xs text-purple-400">
-                    {card.draw_count}× drawn
-                  </p>
+                  <p className="text-xs text-purple-400">{card.draw_count}× drawn</p>
                 </div>
               ))}
             </div>

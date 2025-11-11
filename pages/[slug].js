@@ -3,35 +3,6 @@ import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import Head from 'next/head';
 
-// ⭐ Helper to generate category schema
-function getCategorySchemaMarkup(category, readers) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'CollectionPage',
-    name: `${category.category_name} Tarot Readers`,
-    description: category.description || category.vibe,
-    url: `https://fstarot.com/${category.slug}`,
-    about: {
-      '@type': 'Thing',
-      name: 'Tarot Reading',
-      description: category.vibe,
-    },
-    mainEntity: {
-      '@type': 'ItemList',
-      itemListElement: readers?.map((reader, index) => ({
-        '@type': 'ListItem',
-        position: index + 1,
-        item: {
-          '@type': 'Person',
-          name: reader.name,
-          url: `https://fstarot.com/reader/${reader.alias}`,
-          description: reader.tagline,
-        },
-      })) || [],
-    },
-  };
-}
-
 export async function getStaticPaths() {
   const { data } = await supabase.from('categories').select('slug');
   return { 
@@ -62,14 +33,11 @@ export async function getStaticProps({ params }) {
 }
 
 export default function CategoryPage({ category, readers }) {
-  // ⭐ SEO: Generate schema and metadata
-  const schemaMarkup = getCategorySchemaMarkup(category, readers);
   const pageTitle = `${category.category_name} Tarot Readers | Free Spirit Tarot`;
   const pageDescription = category.description || `Discover ${category.category_name} tarot readers. ${category.vibe}`;
-  
+
   return (
     <>
-      {/* ⭐ SEO: Meta tags and schema */}
       <Head>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
@@ -83,14 +51,10 @@ export default function CategoryPage({ category, readers }) {
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
         <link rel="canonical" href={`https://fstarot.com/${category.slug}`} />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
-        />
       </Head>
-      
-      <div className="space-y-12">
-        {/* Category Header */}
+
+      <div className="space-y-16">
+        {/* 🪶 Category Header */}
         <div className="text-center">
           <h1 className="text-4xl font-bold text-yellow-300 mb-4">
             {category.emoji || '🔮'} {category.category_name}
@@ -105,95 +69,42 @@ export default function CategoryPage({ category, readers }) {
           )}
         </div>
 
-        {/* Category Details Grid */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {/* Ideal For */}
-          {category.ideal_for && (
-            <div className="bg-purple-900/30 border border-purple-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-yellow-300 mb-2">
-                ✨ Perfect For
-              </h3>
-              <p className="text-purple-200 text-sm">
-                {category.ideal_for}
-              </p>
-            </div>
-          )}
-
-          {/* Reading Approach */}
-          {category.reading_approach && (
-            <div className="bg-purple-900/30 border border-purple-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-yellow-300 mb-2">
-                🎯 Reading Style
-              </h3>
-              <p className="text-purple-200 text-sm">
-                {category.reading_approach}
-              </p>
-            </div>
-          )}
-
-          {/* Popular Spreads */}
-          {category.typical_spreads && (
-            <div className="bg-purple-900/30 border border-purple-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-yellow-300 mb-2">
-                🃏 Popular Spreads
-              </h3>
-              <p className="text-purple-200 text-sm">
-                {category.typical_spreads}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Personality Range & Visual Aesthetic */}
-        {(category.personality_range || category.visual_aesthetic) && (
-          <div className="bg-gradient-to-r from-purple-900/20 to-indigo-900/20 border border-purple-700/50 rounded-xl p-8 max-w-4xl mx-auto">
-            {category.personality_range && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-yellow-300 mb-2">
-                  🎭 Reader Personalities
-                </h3>
-                <p className="text-purple-200">
-                  {category.personality_range}
-                </p>
-              </div>
-            )}
-            {category.visual_aesthetic && (
-              <div>
-                <h3 className="text-lg font-semibold text-yellow-300 mb-2">
-                  🎨 Visual Aesthetic
-                </h3>
-                <p className="text-purple-200">
-                  {category.visual_aesthetic}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Readers Grid */}
+        {/* ✨ Reader Cards */}
         <div>
-          <h2 className="text-3xl font-bold text-yellow-300 text-center mb-8">
+          <h2 className="text-3xl font-bold text-yellow-300 text-center mb-10">
             Meet Your {category.category_name} Readers
           </h2>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {readers?.map(reader => (
               <Link
                 key={reader.id}
                 href={'/reader/' + reader.alias}
-                className="block p-6 bg-purple-900/40 rounded-lg border border-purple-700 hover:scale-[1.03] transition group"
+                className="group relative p-6 bg-purple-900/40 rounded-2xl border border-purple-700 hover:border-yellow-300 hover:shadow-lg hover:shadow-yellow-400/10 transition-all duration-300 text-center overflow-hidden"
               >
-                <h3 className="text-xl font-semibold text-yellow-300 mb-2 group-hover:text-yellow-200">
+                {/* Reader Image */}
+                <div className="relative w-24 h-24 mx-auto mb-4">
+                  <img
+                    src={reader.image_url || 'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png'}
+                    alt={reader.name}
+                    className="w-24 h-24 rounded-full object-cover border-2 border-purple-700 group-hover:scale-105 group-hover:border-yellow-300 transition-transform duration-300 shadow-md"
+                  />
+                  <div className="absolute inset-0 rounded-full bg-yellow-300/0 group-hover:bg-yellow-300/10 transition-all duration-300"></div>
+                </div>
+
+                {/* Reader Info */}
+                <h3 className="text-xl font-semibold text-yellow-300 mb-1 group-hover:text-yellow-200">
                   {reader.emoji || '🔮'} {reader.name}
                 </h3>
-                <p className="text-sm text-purple-200 mb-3">{reader.tagline}</p>
+                <p className="text-sm text-purple-200 mb-2">{reader.tagline}</p>
+
                 {reader.specialty && (
-                  <p className="text-xs text-purple-400">
-                    ✨ Specialty: {reader.specialty}
+                  <p className="text-xs text-purple-400 italic">
+                    ✨ {reader.specialty}
                   </p>
                 )}
                 {reader.best_for && (
                   <p className="text-xs text-purple-400 mt-1">
-                    🎯 Best For: {reader.best_for}
+                    🎯 {reader.best_for}
                   </p>
                 )}
               </Link>
@@ -201,10 +112,10 @@ export default function CategoryPage({ category, readers }) {
           </div>
         </div>
 
-        {/* No Readers Message */}
+        {/* 💤 No Readers Fallback */}
         {(!readers || readers.length === 0) && (
           <div className="text-center text-purple-300 py-12">
-            <p className="text-lg">
+            <p className="text-lg mb-4">
               🌙 New readers are being summoned to this realm...
             </p>
             <Link 

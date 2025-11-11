@@ -180,12 +180,27 @@ export default function ReaderPage({ reader, topCards }) {
       </Head>
       
       <div className="max-w-2xl mx-auto space-y-10">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-yellow-300 mb-2">
-            {reader.emoji || '🔮'} {reader.name}
-          </h1>
-          <p className="text-purple-200">{reader.tagline}</p>
-        </div>
+      <div className="text-center space-y-4">
+  {/* 🖼️ Reader Portrait */}
+  {reader.image_url && (
+    <div className="flex justify-center">
+      <Image
+        src={reader.image_url}
+        alt={reader.name}
+        width={240}
+        height={240}
+        className="rounded-full border-4 border-purple-700 shadow-xl object-cover"
+      />
+    </div>
+  )}
+
+  {/* 🌙 Name + Tagline */}
+  <h1 className="text-3xl font-bold text-yellow-300 mb-2">
+    {reader.emoji || '🔮'} {reader.name}
+  </h1>
+  <p className="text-purple-200">{reader.tagline}</p>
+</div>
+
 
         {/* 💬 Chat window */}
         <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 flex flex-col h-[450px]">

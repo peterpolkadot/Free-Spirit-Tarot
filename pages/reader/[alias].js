@@ -2,7 +2,8 @@
 import { supabase } from '@/lib/supabaseClient';
 import Head from 'next/head';
 import Link from 'next/link';
-import AskReader from '@/components/AskReader';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 
 export async function getStaticPaths() {
   const { data } = await supabase.from('readers').select('alias');
@@ -29,7 +30,7 @@ export async function getStaticProps({ params }) {
     .order('draw_count', { ascending: false })
     .limit(3);
 
-  // Reader summary
+  // Reader summary (total readings, unique users, etc.)
   const { data: summary } = await supabase
     .from('reader_summary')
     .select('*')
@@ -37,12 +38,65 @@ export async function getStaticProps({ params }) {
     .single();
 
   return {
-    props: { reader, cardStats: cardStats || [], summary: summary || null },
+    props: { reader, initialCardStats: cardStats || [], initialSummary: summary || null },
     revalidate: 3600,
   };
 }
 
-export default function ReaderPage({ reader, cardStats, summary }) {
+export default function ReaderPage({ reader, initialCardStats, initialSummary }) {
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [reply, setReply] = useState('');
+  const [cards, setCards] = useState([]);
+  const [cardStats, setCardStats] = useState(initialCardStats);
+  const [summary, setSummary] = useState(initialSummary);
+
+  // 🔴 Real-time stats listener
+  useEffect(() => {
+    const channel = supabase
+      .channel('public:card_stats')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'card_stats' }, (payload) => {
+        // Refresh reader's card stats
+        supabase
+          .from('card_stats')
+          .select('card_name, category, draw_count, last_drawn, image_url')
+          .eq('reader', reader.alias)
+          .order('draw_count', { ascending: false })
+          .limit(3)
+          .then(({ data }) => setCardStats(data || []));
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [reader.alias]);
+
+  // 🔮 Handle chat submit
+  const handleAsk = async (e) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+    setLoading(true);
+    setReply('');
+    setCards([]);
+
+    try {
+      const res = await fetch('/api/askReader', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reader_alias: reader.alias, message }),
+      });
+      const data = await res.json();
+      setReply(data.reply || '✨ The spirits are quiet...');
+      setCards(data.cards || []);
+    } catch (err) {
+      console.error('Reading error:', err);
+      setReply('⚠️ Something went wrong during your reading.');
+    } finally {
+      setLoading(false);
+      setMessage('');
+    }
+  };
+
   const schema = {
     "@context": "https://schema.org",
     "@type": "Person",
@@ -78,66 +132,109 @@ export default function ReaderPage({ reader, cardStats, summary }) {
           <p className="text-purple-300 max-w-2xl mx-auto">{reader.description}</p>
         </header>
 
-        {/* 🧮 Stats Overview */}
-        {summary && (
-          <section className="text-center space-y-4">
-            <h2 className="text-2xl text-yellow-300 font-semibold">📊 Reader Stats</h2>
-            <div className="flex justify-center gap-6 text-purple-200">
-              <div>
-                <span className="text-3xl text-yellow-300 font-bold">
-                  {summary.total_readings || 0}
-                </span>
-                <p className="text-sm">Total Readings</p>
-              </div>
-              <div>
-                <span className="text-3xl text-yellow-300 font-bold">
-                  {summary.unique_users || 0}
-                </span>
-                <p className="text-sm">Unique Seekers</p>
-              </div>
-              <div>
-                <span className="text-3xl text-yellow-300 font-bold">
-                  {summary.avg_cards_per_reading || 0}
-                </span>
-                <p className="text-sm">Avg Cards / Reading</p>
-              </div>
-            </div>
-          </section>
-        )}
+        {/* 💬 Chat Section */}
+        <section className="bg-purple-900/40 border border-purple-700 rounded-xl p-6 space-y-4 max-w-3xl mx-auto">
+          <form onSubmit={handleAsk} className="flex gap-2">
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Ask your question..."
+              className="flex-1 bg-purple-800/60 border border-purple-600 rounded-lg px-4 py-2 text-yellow-200 focus:outline-none focus:border-yellow-400"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 bg-yellow-400 text-purple-900 font-semibold rounded-lg hover:bg-yellow-300 transition disabled:opacity-50"
+            >
+              Ask
+            </button>
+          </form>
 
-        {/* 🃏 Top Cards */}
-        {cardStats?.length > 0 && (
-          <section>
-            <h2 className="text-2xl font-semibold text-yellow-300 mb-6 text-center">
-              🃏 Most Drawn Cards
-            </h2>
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {cardStats.map((c) => (
-                <Link
-                  key={c.card_name}
-                  href={'/card/' + c.card_name.toLowerCase().replace(/\s+/g, '-')}
-                  className="p-5 bg-purple-900/40 border border-purple-700 rounded-lg hover:border-yellow-300 hover:scale-[1.03] transition block text-center"
+          {loading && (
+            <div className="flex justify-center items-center py-6 text-yellow-300">
+              <motion.span
+                animate={{ opacity: [0.2, 1, 0.2] }}
+                transition={{ repeat: Infinity, duration: 1.2 }}
+                className="text-lg"
+              >
+                🔮 Shuffling the cards...
+              </motion.span>
+            </div>
+          )}
+
+          {!loading && reply && (
+            <div className="bg-purple-800/60 border border-purple-700 p-4 rounded-lg text-purple-100 whitespace-pre-line">
+              {reply}
+            </div>
+          )}
+
+          {/* 🎴 Drawn Cards */}
+          {cards.length > 0 && (
+            <div className="flex justify-center flex-wrap gap-4 mt-6">
+              {cards.map((c) => (
+                <motion.div
+                  key={c.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="text-center"
                 >
                   <img
                     src={c.image_url || 'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png'}
-                    alt={c.card_name}
-                    className="w-24 h-36 object-cover mx-auto rounded-md mb-3 border-2 border-purple-700"
+                    alt={c.name}
+                    className="w-32 h-48 object-contain mx-auto border-2 border-purple-700 rounded-md shadow-md"
                   />
-                  <h3 className="text-yellow-300 font-semibold">{c.card_name}</h3>
-                  <p className="text-xs text-purple-400 mt-1 italic">
-                    {c.category}
-                  </p>
-                  <p className="text-xs text-purple-400">
-                    Drawn {c.draw_count}×
-                  </p>
-                </Link>
+                  <p className="text-yellow-300 mt-2 text-sm">{c.name}</p>
+                </motion.div>
               ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
-        {/* 💬 Ask Reader */}
-        <AskReader reader={reader} />
+        {/* 📊 Reader Stats (Live) */}
+        <section className="text-center space-y-6">
+          <h2 className="text-2xl text-yellow-300 font-semibold">📈 Reader Stats</h2>
+          <div className="flex justify-center gap-6 text-purple-200">
+            <div>
+              <span className="text-3xl text-yellow-300 font-bold">
+                {summary?.total_readings || 0}
+              </span>
+              <p className="text-sm">Total Readings</p>
+            </div>
+            <div>
+              <span className="text-3xl text-yellow-300 font-bold">
+                {summary?.unique_users || 0}
+              </span>
+              <p className="text-sm">Unique Seekers</p>
+            </div>
+          </div>
+
+          {cardStats?.length > 0 && (
+            <div>
+              <h3 className="text-xl text-yellow-300 font-semibold mt-6 mb-4">
+                🃏 Most Drawn Cards
+              </h3>
+              <div className="flex justify-center gap-6 flex-wrap">
+                {cardStats.map((c) => (
+                  <Link
+                    key={c.card_name}
+                    href={'/card/' + c.card_name.toLowerCase().replace(/\s+/g, '-')}
+                    className="p-3 bg-purple-900/40 border border-purple-700 rounded-lg hover:border-yellow-300 hover:scale-[1.03] transition block text-center w-32"
+                  >
+                    <img
+                      src={c.image_url || 'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png'}
+                      alt={c.card_name}
+                      className="w-full h-48 object-contain rounded-md mb-2 border border-purple-700"
+                    />
+                    <p className="text-yellow-300 text-sm font-semibold">{c.card_name}</p>
+                    <p className="text-xs text-purple-400">{c.draw_count}× drawn</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* 🔗 Footer */}
         <footer className="text-center mt-12">

@@ -2,6 +2,11 @@
 import OpenAI from "openai";
 import { supabase } from "@/lib/supabaseClient";
 
+// ✅ Force Node runtime so OpenAI SDK works on Vercel
+export const config = {
+  runtime: "nodejs",
+};
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -38,24 +43,32 @@ export default async function handler(req, res) {
     // ✨ Compose AI prompt
     const cardSummary = drawnCards.map((c) => `${c.name} (${c.category})`).join(", ");
     const systemPrompt = `
-You are ${reader.name}, an intuitive tarot reader.
-Provide a ${spread_type.replace("_", " ")} reading for this seeker.
+You are ${reader.name}, an intuitive AI tarot reader.
+Provide a ${spread_type.replace("_", " ")} reading for the seeker.
 Cards drawn: ${cardSummary}.
-Use spiritual and insightful language but stay concise.
+Respond in a warm, spiritual, conversational tone.
 `;
 
+    // 🧠 Call OpenAI (using Node runtime)
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    let aiResponse = "";
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: question },
-      ],
-      temperature: 0.8,
-    });
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.8,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: question },
+        ],
+      });
+      aiResponse = completion.choices?.[0]?.message?.content?.trim() || "";
+    } catch (err) {
+      console.error("OpenAI API failed:", err.message);
+      aiResponse = "";
+    }
 
-    const aiResponse = completion.choices?.[0]?.message?.content || "✨ The cards are silent...";
+    if (!aiResponse) aiResponse = "✨ The cards are silent tonight. Try again soon...";
 
     // 🪶 Log reading
     await supabase.from("readings").insert([
@@ -103,10 +116,8 @@ Use spiritual and insightful language but stay concise.
       .maybeSingle();
 
     const total_readings = (summary?.total_readings || 0) + 1;
-    const unique_users = summary?.unique_users || 0;
     const avg_cards_per_reading =
-      ((summary?.avg_cards_per_reading || 0) * (total_readings - 1) + drawCount) /
-      total_readings;
+      ((summary?.avg_cards_per_reading || 0) * (total_readings - 1) + drawCount) / total_readings;
 
     if (summary) {
       await supabase
@@ -123,7 +134,7 @@ Use spiritual and insightful language but stay concise.
           reader_alias,
           total_readings,
           avg_cards_per_reading,
-          unique_users,
+          unique_users: 0,
           last_active: new Date().toISOString(),
         },
       ]);

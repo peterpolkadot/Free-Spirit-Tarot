@@ -14,18 +14,21 @@ export async function getStaticProps() {
     .order('total_readings', { ascending: false })
     .limit(3);
 
-  // Fetch 3 newest readers
+  // Fetch newest readers
   const { data: newReaders } = await supabase
     .from('readers')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(3);
 
-  return { props: { categories, topReaders, newReaders } };
+  return {
+    props: { categories, topReaders, newReaders },
+    revalidate: 86400,
+  };
 }
 
 export default function Home({ categories, topReaders, newReaders }) {
-  const organizationSchema = {
+  const schema = {
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "Free Spirit Tarot",
@@ -38,7 +41,7 @@ export default function Home({ categories, topReaders, newReaders }) {
     <>
       <Head>
         <title>Free Spirit Tarot - AI Tarot Readers for Spiritual Guidance</title>
-        <meta name="description" content="Discover unique AI-powered tarot readers offering personalized spiritual guidance. Choose from mystical, traditional, modern, and more reading styles." />
+        <meta name="description" content="Discover AI-powered tarot readers offering personalized spiritual guidance. Choose from mystical, traditional, and modern reading styles." />
         <meta name="keywords" content="tarot reading, AI tarot, spiritual guidance, tarot readers, online tarot, free tarot" />
         <meta property="og:title" content="Free Spirit Tarot - AI Tarot Readers" />
         <meta property="og:description" content="Discover unique AI-powered tarot readers offering personalized spiritual guidance." />
@@ -47,9 +50,9 @@ export default function Home({ categories, topReaders, newReaders }) {
         <meta property="og:site_name" content="Free Spirit Tarot" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Free Spirit Tarot - AI Tarot Readers" />
-        <meta name="twitter:description" content="Discover unique AI-powered tarot readers offering personalized spiritual guidance." />
+        <meta name="twitter:description" content="Discover AI-powered tarot readers offering personalized spiritual guidance." />
         <link rel="canonical" href="https://fstarot.com" />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       </Head>
 
       <div className="space-y-16">
@@ -103,7 +106,9 @@ export default function Home({ categories, topReaders, newReaders }) {
           </div>
 
           {/* 🌙 New Readers */}
-          <h3 className="text-2xl mt-14 mb-6 text-center font-semibold text-yellow-300">🌙 New Readers</h3>
+          <h3 className="text-2xl mt-14 mb-6 text-center font-semibold text-yellow-300">
+            🌙 New Readers
+          </h3>
           <div className="grid md:grid-cols-3 gap-6">
             {newReaders?.map((r) => (
               <Link
@@ -116,7 +121,9 @@ export default function Home({ categories, topReaders, newReaders }) {
                   alt={r.name}
                   className="w-20 h-20 rounded-full mx-auto mb-3 border-2 border-purple-700 object-cover shadow-md"
                 />
-                <h3 className="text-xl text-yellow-300">{r.emoji || '🔮'} {r.name}</h3>
+                <h3 className="text-xl text-yellow-300">
+                  {r.emoji || '🔮'} {r.name}
+                </h3>
                 <p className="text-sm text-purple-200">{r.category}</p>
                 <p className="text-xs text-purple-400 mt-1 italic">{r.tagline}</p>
               </Link>

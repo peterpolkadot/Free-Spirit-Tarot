@@ -49,15 +49,39 @@ export default async function handler(req, res) {
   if (!reader_alias || !message) return res.status(400).json({ reply: 'Missing reader_alias or message.' });
 
   try {
+    // 🧙‍♀️ Fetch reader profile from Supabase
+    const { data: reader } = await supabase
+      .from('readers')
+      .select('*')
+      .eq('alias', reader_alias)
+      .single();
+
+    if (!reader) return res.status(404).json({ reply: 'Reader not found.' });
+
+    // 🪶 Build personalized system prompt
+    const systemPrompt = `
+You are ${reader.Name}, also known as ${reader.Persona || reader.Name}.
+${reader.SystemInstructions || 'You are a compassionate tarot reader who offers intuitive readings.'}
+
+Your tone: ${reader.VoiceTone || 'warm and insightful'}.
+Your specialty: ${reader.Specialty || 'general tarot guidance'}.
+You are best for: ${reader.BestFor || 'those seeking understanding and clarity'}.
+Your reading style: ${reader.ReadingStyle || 'symbolic interpretation with empathy'}.
+Your popular spreads: ${reader.PopularSpreads || 'Three Card, Celtic Cross'}.
+
+Speak with the spirit of your tagline: "${reader.Tagline || 'Let the cards reveal your truth.'}".
+Remember to stay true to your persona: ${reader.Persona || 'an intuitive guide with mystical insight'}.
+`;
+
     const chatHistory = [
-      { role: 'system', content: 'You are an intuitive tarot reader. Always begin by asking the user for their name, star sign, and what kind of reading they’d like — three-card, love, or Celtic Cross. Then perform that reading using symbolic interpretation and empathy. You can request clarification if details are missing.' },
+      { role: 'system', content: systemPrompt },
       ...history,
       { role: 'user', content: message },
     ];
 
     const completion = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      temperature: 0.8,
+      model: reader.Model || 'gpt-4o-mini',
+      temperature: reader.Temperature || 0.8,
       messages: chatHistory,
     });
 

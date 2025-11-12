@@ -13,7 +13,7 @@ export async function getStaticPaths() {
   };
 }
 
-export async function getStaticProps({ params }) {
+export async function getServerSideProps({ params }) {
   const { data: reader } = await supabase
     .from('readers')
     .select('*')
@@ -39,7 +39,7 @@ export async function getStaticProps({ params }) {
 
   return {
     props: { reader, initialCardStats: cardStats || [], initialSummary: summary || null },
-    revalidate: 3600,
+   
   };
 }
 
@@ -52,11 +52,16 @@ export default function ReaderPage({ reader, initialCardStats, initialSummary })
   const [summary, setSummary] = useState(initialSummary);
 
   // 🔴 Real-time stats listener
-  useEffect(() => {
-    const channel = supabase
-      .channel('public:card_stats')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'card_stats' }, (payload) => {
-        // Refresh reader's card stats
+  // 🔴 Real-time listeners for card stats + reader summary
+useEffect(() => {
+  // 📌 Live updates for card_stats (top drawn cards)
+  const cardStatsChannel = supabase
+    .channel('card_stats_realtime')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'card_stats' },
+      (payload) => {
+        // Refresh top 3 cards for this reader
         supabase
           .from('card_stats')
           .select('card_name, category, draw_count, last_drawn, image_url')
@@ -64,12 +69,35 @@ export default function ReaderPage({ reader, initialCardStats, initialSummary })
           .order('draw_count', { ascending: false })
           .limit(3)
           .then(({ data }) => setCardStats(data || []));
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [reader.alias]);
+      }
+    )
+    .subscribe();
+
+  // 📌 Live updates for reader_summary (total_readings, unique_users)
+  const summaryChannel = supabase
+    .channel('reader_summary_realtime')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'reader_summary' },
+      (payload) => {
+        if (payload.new?.reader_alias === reader.alias) {
+          setSummary(payload.new);
+        }
+      }
+    )
+    .subscribe();
+
+  // 🧹 Cleanup on unmount
+  return () => {
+    supabase.removeChannel(cardStatsChannel);
+    supabase.removeChannel(summaryChannel);
+  };
+}, [reader.alias]);
+
+
+
+
+
 
   // 🔮 Handle chat submit
   const handleAsk = async (e) => {

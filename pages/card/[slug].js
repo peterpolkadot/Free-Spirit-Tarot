@@ -3,21 +3,19 @@ import { supabase } from '@/lib/supabaseClient';
 import Head from 'next/head';
 import Link from 'next/link';
 
-
-
-export async function getServerSideProps({ params })
- {
-  // Find card by name from slug
+export async function getServerSideProps({ params }) {
   const cardName = params.slug.replace(/-/g, ' ');
-  const { data: card } = await supabase
+
+  // 🔍 Fetch card safely
+  const { data: card, error: cardError } = await supabase
     .from('cards')
     .select('*')
     .ilike('name', cardName)
-    .single();
+    .maybeSingle(); // SAFE
 
-  if (!card) return { notFound: true };
+  if (!card || cardError) return { notFound: true };
 
-  // Card stats
+  // 📊 Fetch stats
   const { data: stats } = await supabase
     .from('card_stats')
     .select('reader, card_name, draw_count, last_drawn')
@@ -25,20 +23,23 @@ export async function getServerSideProps({ params })
     .order('draw_count', { ascending: false })
     .limit(10);
 
-  // Reader details for top stats
-  const readers = [];
+  // 👤 Load readers
+  let readers = [];
   if (stats?.length) {
-    const readerAliases = stats.map((s) => s.reader);
+    const aliases = stats.map((s) => s.reader);
     const { data: readerData } = await supabase
       .from('readers')
       .select('name, alias, emoji, image_url')
-      .in('alias', readerAliases);
-    if (readerData) readers.push(...readerData);
+      .in('alias', aliases);
+    readers = readerData || [];
   }
 
   return {
-    props: { card, stats: stats || [], readers },
-    revalidate: 3600,
+    props: {
+      card,
+      stats: stats || [],
+      readers,
+    },
   };
 }
 
@@ -53,13 +54,13 @@ export default function CardPage({ card, stats, readers }) {
       { "@type": "Thing", "name": card.category },
       { "@type": "Thing", "name": card.theme },
     ],
-    "url": `https://fstarot.com/card/${card.name.toLowerCase().replace(/\s+/g, '-')}`
+    "url": `https://fstarot.com/card/${card.name.toLowerCase().replace(/\s+/g, '-')}`,
   };
 
   const readerMap = {};
   stats.forEach((s) => {
-    const match = readers.find((r) => r.alias === s.reader);
-    if (match) readerMap[s.reader] = match;
+    const r = readers.find((x) => x.alias === s.reader);
+    if (r) readerMap[s.reader] = r;
   });
 
   return (
@@ -78,7 +79,8 @@ export default function CardPage({ card, stats, readers }) {
       </Head>
 
       <article className="max-w-5xl mx-auto py-12 space-y-16">
-        {/* 🃏 Card Header */}
+
+        {/* Header */}
         <header className="text-center space-y-4">
           <img
             src={card.image_url || 'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png'}
@@ -89,7 +91,7 @@ export default function CardPage({ card, stats, readers }) {
           <p className="text-purple-300 italic">{card.category}</p>
         </header>
 
-        {/* 🔮 Card Meaning */}
+        {/* Meaning */}
         <section className="space-y-6 text-purple-200 leading-relaxed">
           <h2 className="text-2xl font-semibold text-yellow-300">Meaning</h2>
           <p>{card.meaning}</p>
@@ -100,12 +102,14 @@ export default function CardPage({ card, stats, readers }) {
               <p>{card.positive}</p>
             </>
           )}
+
           {card.negative && (
             <>
               <h3 className="text-xl font-semibold text-red-300">Challenges</h3>
               <p>{card.negative}</p>
             </>
           )}
+
           {card.symbolism && (
             <>
               <h3 className="text-xl font-semibold text-yellow-300">Symbolism</h3>
@@ -114,12 +118,13 @@ export default function CardPage({ card, stats, readers }) {
           )}
         </section>
 
-        {/* 📊 Stats */}
+        {/* Stats */}
         {stats?.length > 0 && (
           <section>
             <h2 className="text-2xl font-semibold text-yellow-300 text-center mb-6">
               📈 Card Draw Stats
             </h2>
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-purple-300 border border-purple-700 rounded-lg overflow-hidden">
                 <thead className="bg-purple-800/60 text-yellow-300">
@@ -131,21 +136,21 @@ export default function CardPage({ card, stats, readers }) {
                 </thead>
                 <tbody>
                   {stats.map((s) => {
-                    const reader = readerMap[s.reader];
+                    const r = readerMap[s.reader];
                     return (
                       <tr key={s.reader} className="border-t border-purple-700">
                         <td className="py-2 px-3">
-                          {reader ? (
+                          {r ? (
                             <Link
-                              href={'/reader/' + reader.alias}
+                              href={'/reader/' + r.alias}
                               className="flex items-center gap-2 hover:text-yellow-300"
                             >
                               <img
-                                src={reader.image_url || 'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png'}
-                                alt={reader.name}
+                                src={r.image_url || 'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png'}
+                                alt={r.name}
                                 className="w-8 h-8 rounded-full border border-purple-600"
                               />
-                              <span>{reader.emoji || '🔮'} {reader.name}</span>
+                              <span>{r.emoji || '🔮'} {r.name}</span>
                             </Link>
                           ) : (
                             s.reader
@@ -153,9 +158,7 @@ export default function CardPage({ card, stats, readers }) {
                         </td>
                         <td className="py-2 px-3">{s.draw_count}</td>
                         <td className="py-2 px-3">
-                          {s.last_drawn
-                            ? new Date(s.last_drawn).toLocaleDateString()
-                            : '—'}
+                          {s.last_drawn ? new Date(s.last_drawn).toLocaleDateString() : '—'}
                         </td>
                       </tr>
                     );
@@ -166,7 +169,7 @@ export default function CardPage({ card, stats, readers }) {
           </section>
         )}
 
-        {/* 🔗 Footer */}
+        {/* Footer */}
         <footer className="text-center mt-12">
           <Link
             href="/cards"
@@ -175,6 +178,7 @@ export default function CardPage({ card, stats, readers }) {
             🃏 Back to All Cards
           </Link>
         </footer>
+
       </article>
     </>
   );

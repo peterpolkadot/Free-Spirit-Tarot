@@ -1,35 +1,15 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import Image from 'next/image';
 import Head from 'next/head';
-
-const driveToDirect = (url) => {
-  if (!url) return null;
-  if (url.includes('drive.google.com/file/d/')) {
-    return url
-      .replace('https://drive.google.com/file/d/', 'https://drive.google.com/uc?export=view&id=')
-      .replace(/\/view\?.*$/, '');
-  }
-  return url;
-};
-
-// ⭐ Helper to generate reader schema
-function getReaderSchemaMarkup(reader) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Person',
-    name: reader.name,
-    jobTitle: 'Tarot Reader',
-    description: reader.description || reader.tagline,
-    url: `https://fstarot.com/reader/${reader.alias}`,
-    knowsAbout: reader.specialty || 'Tarot Reading',
-  };
-}
+import { Send, Sparkles } from 'lucide-react';
 
 export async function getStaticPaths() {
   const { data } = await supabase.from('readers').select('alias');
-  return { paths: data?.map(r => ({ params: { slug: r.alias } })) || [], fallback: 'blocking' };
+  return { 
+    paths: data?.map(r => ({ params: { slug: r.alias } })) || [], 
+    fallback: 'blocking' 
+  };
 }
 
 export async function getStaticProps({ params }) {
@@ -40,199 +20,158 @@ export async function getStaticProps({ params }) {
     .single();
 
   if (!reader) return { notFound: true };
-
-  // 🔢 Fetch top 3 cards by draw count
-  const { data: topCardStats } = await supabase
-    .from('card_stats')
-    .select('*')
-    .eq('reader', reader.alias)
-    .order('draw_count', { ascending: false })
-    .limit(3);
-
-  // 🎴 Enrich with card images
-  const topCards = [];
-  for (const stat of topCardStats || []) {
-    const { data: cardInfo } = await supabase
-      .from('cards')
-      .select('image_url')
-      .eq('name', stat.card_name)
-      .single();
-
-    topCards.push({
-      ...stat,
-      image_url: cardInfo?.image_url || null,
-    });
-  }
-
-  return {
-    props: { reader, topCards },
-    revalidate: 86400,
-  };
+  
+  return { props: { reader }, revalidate: 86400 };
 }
 
-export default function ReaderPage({ reader, topCards }) {
-  const [messages, setMessages] = useState([
-    { role: 'assistant', content: `✨ I am ${reader.name}. ${reader.tagline}` }
-  ]);
+export default function ReaderPage({ reader }) {
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
+  const [loading, setLoading] = useState(false);
 
-  const schemaMarkup = getReaderSchemaMarkup(reader);
-  const pageTitle = reader.meta_title || `${reader.name} - Tarot Reader | Free Spirit Tarot`;
-  const pageDescription = reader.meta_description || reader.tagline;
-  const pageKeywords = reader.seo_keywords || '';
-  const imageSrc =
-    driveToDirect(reader.image_url) ||
-    'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png';
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  async function handleSend(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
-    const userMessage = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
+
+    const userMsg = input.trim();
     setInput('');
-    setIsTyping(true);
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setLoading(true);
 
     try {
       const res = await fetch('/api/askReader', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reader_alias: reader.alias, message: input })
+        body: JSON.stringify({ reader_alias: reader.alias, message: userMsg }),
       });
+      
       const data = await res.json();
-      const botMessage = {
-        role: 'assistant',
-        content: data.reply || '✨ ...the spirits are quiet right now.'
-      };
-      setMessages(prev => [...prev, botMessage]);
+      
+      // Add the text response WITH cards array
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: data.reply,
+        cards: data.cards // Include cards if they exist
+      }]);
     } catch (err) {
-      setMessages(prev => [
-        ...prev,
-        { role: 'assistant', content: '⚠️ Something went wrong. Try again soon.' }
-      ]);
+      console.error(err);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: '✨ The spirits are unclear at this moment...' 
+      }]);
     } finally {
-      setIsTyping(false);
+      setLoading(false);
     }
-  }
+  };
+
+  const pageTitle = `${reader.name} - ${reader.tagline} | Free Spirit Tarot`;
+  const pageDescription = reader.description || `Connect with ${reader.name}, a ${reader.category} tarot reader. ${reader.tagline}`;
 
   return (
     <>
       <Head>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
-        {pageKeywords && <meta name="keywords" content={pageKeywords} />}
+        <meta name="keywords" content={`${reader.name}, ${reader.category}, tarot reading, spiritual guidance`} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:type" content="profile" />
         <meta property="og:url" content={`https://fstarot.com/reader/${reader.alias}`} />
-        <meta property="og:site_name" content="Free Spirit Tarot" />
-        <meta name="twitter:card" content="summary_large_image" />
+        {reader.image_url && <meta property="og:image" content={reader.image_url} />}
+        <meta name="twitter:card" content="summary" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
+        {reader.image_url && <meta name="twitter:image" content={reader.image_url} />}
         <link rel="canonical" href={`https://fstarot.com/reader/${reader.alias}`} />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
-        />
       </Head>
 
-      <div className="max-w-2xl mx-auto space-y-10">
-        {/* 🌙 Reader Header */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-start sm:space-x-6 text-center sm:text-left">
-          <Image
-            src={imageSrc}
+      <div className="max-w-4xl mx-auto">
+        {/* Reader Header */}
+        <div className="text-center mb-8">
+          <img
+            src={reader.image_url || 'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png'}
             alt={reader.name}
-            width={120}
-            height={120}
-            className="rounded-full border-2 border-purple-700 shadow-md object-cover mb-4 sm:mb-0"
+            className="w-32 h-32 rounded-full mx-auto mb-4 border-4 border-purple-700 object-cover shadow-lg"
           />
-          <div>
-            <h1 className="text-3xl font-bold text-yellow-300 mb-1">
-              {reader.emoji || '🔮'} {reader.name}
-            </h1>
-            <p className="text-purple-200 italic">{reader.tagline}</p>
-          </div>
+          <h1 className="text-4xl font-bold text-yellow-300 mb-2">
+            {reader.emoji || '🔮'} {reader.name}
+          </h1>
+          <p className="text-xl text-purple-200">{reader.tagline}</p>
+          {reader.specialty && (
+            <p className="text-purple-300 mt-2">✨ {reader.specialty}</p>
+          )}
+          {reader.best_for && (
+            <p className="text-purple-400 mt-1 text-sm">🎯 Best for: {reader.best_for}</p>
+          )}
         </div>
 
-        {/* 💬 Chat Window */}
-        <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 flex flex-col h-[450px]">
-          <div className="flex-1 overflow-y-auto mb-4 space-y-3 scrollbar-thin scrollbar-thumb-purple-700">
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={msg.role === 'assistant'
-                  ? 'text-purple-200 bg-purple-900/40 p-3 rounded-lg w-fit max-w-[80%]'
-                  : 'text-yellow-200 bg-purple-800/40 p-3 rounded-lg self-end w-fit max-w-[80%]'
-                }
-              >
-                {msg.content}
-              </div>
-            ))}
-            {isTyping && (
-              <div className="flex items-center space-x-1 bg-purple-900/40 p-3 rounded-lg w-fit">
-                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></span>
-                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-150"></span>
-                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-300"></span>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          <form onSubmit={handleSend} className="flex">
-            <input
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder="Ask your tarot reader..."
-              className="flex-1 bg-purple-800/30 border border-purple-700 rounded-l-lg px-4 py-2 text-purple-100 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-            />
-            <button
-              type="submit"
-              className="px-4 py-2 bg-yellow-400 text-purple-900 font-semibold rounded-r-lg hover:bg-yellow-300 transition"
-            >
-              Send
-            </button>
-          </form>
-        </div>
-
-        {/* 🪄 Most Drawn Cards */}
-        {topCards && topCards.length > 0 && (
-          <div className="text-center mt-10">
-            <h2 className="text-2xl font-bold text-yellow-300 mb-4">✨ Most Drawn Cards</h2>
-            <div className="flex justify-center flex-wrap gap-6">
-              {topCards.map((card, i) => (
-                <div
-                  key={i}
-                  className="bg-purple-900/40 border border-purple-700 p-3 rounded-xl w-28"
-                >
-                  <div className="relative w-16 h-24 mx-auto mb-2">
-                    {card.image_url ? (
-                      <Image
-                        src={driveToDirect(card.image_url) || card.image_url}
-                        alt={card.card_name}
-                        fill
-                        className="rounded-md object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-purple-800/50 rounded-md flex items-center justify-center text-purple-300">
-                        🃏
-                      </div>
-                    )}
-                  </div>
-                  <h3 className="text-sm font-semibold text-yellow-300 truncate">
-                    {card.card_name}
-                  </h3>
-                  <p className="text-xs text-purple-400">{card.draw_count}× drawn</p>
-                </div>
-              ))}
+        {/* Chat Messages */}
+        <div className="bg-purple-900/40 rounded-2xl border border-purple-700 p-6 mb-6 min-h-[400px] max-h-[600px] overflow-y-auto space-y-4">
+          {messages.length === 0 && (
+            <div className="text-center text-purple-300 py-12">
+              <Sparkles className="w-12 h-12 mx-auto mb-4 text-yellow-300" />
+              <p className="text-lg">Ask {reader.name} a question...</p>
+              <p className="text-sm text-purple-400 mt-2">
+                💫 Try: "What does the future hold for me?"
+              </p>
             </div>
-          </div>
-        )}
+          )}
+          
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] p-4 rounded-lg ${
+                msg.role === 'user' 
+                  ? 'bg-purple-700 text-white' 
+                  : 'bg-purple-800/50 text-purple-100'
+              }`}>
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+                
+                {/* 🎴 RENDER CARDS AS ACTUAL IMAGES (NOT MARKDOWN) */}
+                {msg.cards && msg.cards.length > 0 && (
+                  <div className="flex gap-4 mt-4 justify-center flex-wrap">
+                    {msg.cards.map((card, idx) => (
+                      <div key={idx} className="text-center">
+                        <img 
+                          src={card.image_url} 
+                          alt={card.name}
+                          className="w-24 h-auto rounded-lg shadow-md border-2 border-purple-600 hover:scale-105 transition-transform"
+                        />
+                        <p className="text-xs text-purple-300 mt-2 font-semibold">{card.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          
+          {loading && (
+            <div className="text-center text-purple-300 py-4">
+              <Sparkles className="w-6 h-6 mx-auto animate-pulse text-yellow-300" />
+              <p className="text-sm mt-2">Reading the cards...</p>
+            </div>
+          )}
+        </div>
+
+        {/* Input Form */}
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask your question..."
+            className="flex-1 px-4 py-3 bg-purple-900/40 border border-purple-700 rounded-lg text-white placeholder-purple-400 focus:outline-none focus:border-yellow-300 focus:ring-2 focus:ring-yellow-300/20"
+            disabled={loading}
+          />
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="px-6 py-3 bg-purple-700 hover:bg-purple-600 rounded-lg text-white font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <Send className="w-5 h-5" />
+            Send
+          </button>
+        </form>
       </div>
     </>
   );

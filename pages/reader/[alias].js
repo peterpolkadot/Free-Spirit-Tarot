@@ -83,7 +83,7 @@ export default function ReaderPage({ reader, initialCardStats, initialSummary })
       const res = await fetch('/api/askReader', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reader_alias: reader.alias, message }),
+        body: JSON.stringify({ reader_alias: reader.alias, question: message }),
       });
       const data = await res.json();
       setReply(data.reply || '✨ The spirits are quiet...');

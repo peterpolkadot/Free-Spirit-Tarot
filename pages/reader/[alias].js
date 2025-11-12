@@ -5,13 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-export async function getStaticPaths() {
-  const { data } = await supabase.from('readers').select('alias');
-  return {
-    paths: data?.map((r) => ({ params: { alias: r.alias } })) || [],
-    fallback: 'blocking',
-  };
-}
+
 
 export async function getServerSideProps({ params }) {
   const { data: reader } = await supabase

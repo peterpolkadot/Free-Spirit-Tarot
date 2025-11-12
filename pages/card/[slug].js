@@ -3,13 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Head from 'next/head';
 import Link from 'next/link';
 
-export async function getStaticPaths() {
-  const { data } = await supabase.from('cards').select('name');
-  const paths = data?.map((c) => ({
-    params: { slug: c.name.toLowerCase().replace(/\s+/g, '-') },
-  })) || [];
-  return { paths, fallback: 'blocking' };
-}
+
 
 export async function getServerSideProps({ params })
  {

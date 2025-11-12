@@ -7,10 +7,10 @@ export async function getStaticProps() {
   // Fetch categories
   const { data: categories } = await supabase.from('categories').select('*');
 
-  // Fetch top readers leaderboard (limit 3)
+  // Fetch top readers with proper image join
   const { data: topReaders } = await supabase
     .from('top_readers')
-    .select('*')
+    .select('reader_id, reader_alias, reader_name, reader_category, reader_emoji, total_readings, readers(image_url)')
     .order('total_readings', { ascending: false })
     .limit(3);
 
@@ -65,7 +65,7 @@ export default function Home({ categories, topReaders, newReaders }) {
             {categories?.map((cat) => (
               <Link
                 key={cat.id}
-                href={'/' + cat.slug}
+                href={'/categories/' + cat.slug}
                 className="block p-6 bg-purple-900/40 rounded-lg border border-purple-700 hover:scale-[1.03] transition"
               >
                 <h3 className="text-xl text-yellow-300">
@@ -90,7 +90,7 @@ export default function Home({ categories, topReaders, newReaders }) {
                 className="block p-6 bg-purple-900/40 rounded-lg border border-purple-700 hover:scale-[1.03] transition text-center"
               >
                 <img
-                  src={r.reader_image_url || 'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png'}
+                  src={r.readers?.image_url || 'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png'}
                   alt={r.reader_name}
                   className="w-20 h-20 rounded-full mx-auto mb-3 border-2 border-purple-700 object-cover shadow-md"
                 />

@@ -33,6 +33,8 @@ export default function ReaderPage({ reader, stats }) {
 
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const [drawnCards, setDrawnCards] = useState([]);
+
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -49,12 +51,49 @@ export default function ReaderPage({ reader, stats }) {
     setTyping(true);
 
     try {
+      // 1️⃣ Draw 3 cards (Past–Present–Future)
+      const drawRes = await fetch("/api/drawCards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reader_alias: reader.alias,
+          spread_type: "three_card",
+        }),
+      });
+
+      const drawData = await drawRes.json();
+      const cards = drawData.cards || [];
+      setDrawnCards(cards);
+
+      // Labels for rendering + AI
+      const spreadLabels = ["Past", "Present", "Future"];
+
+      const summary = cards
+        .map((c, i) => `${spreadLabels[i]}: ${c.name} (${c.category})`)
+        .join("\n");
+
+      const fullQuestion = `
+The querent asked: "${userMsg.content}"
+
+Perform a **Past–Present–Future Tarot Reading**.
+
+Use ONLY these drawn cards:
+
+${summary}
+
+For each position provide:
+- What the card means in that slot
+- How it relates to the querent's situation
+- A final combined interpretation
+`.trim();
+
+      // 2️⃣ Ask AI
       const res = await fetch("/api/askReader", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           reader_alias: reader.alias,
-          question: userMsg.content,
+          question: fullQuestion,
         }),
       });
 
@@ -74,7 +113,7 @@ export default function ReaderPage({ reader, stats }) {
   return (
     <Layout title={reader.name}>
 
-      <div className="max-w-2xl mx-auto py-16 space-y-12">
+      <div className="max-w-2xl mx-auto py-16 space-y-14">
 
         {/* Reader Header */}
         <header className="text-center space-y-3">
@@ -87,6 +126,35 @@ export default function ReaderPage({ reader, stats }) {
           </h1>
           <p className="text-purple-300 italic">{reader.tagline}</p>
         </header>
+
+        {/* Drawn Cards — Past / Present / Future */}
+        {drawnCards.length === 3 && (
+          <section className="text-center space-y-5 animate-fadeIn">
+            <h2 className="text-2xl text-yellow-300 mb-2">🔮 Your Spread</h2>
+
+            <div className="flex justify-center gap-8 flex-wrap mt-4">
+              {["Past", "Present", "Future"].map((label, i) => (
+                <div
+                  key={label}
+                  className="w-32 bg-purple-900/40 border border-purple-700 p-3 rounded-xl shadow-lg"
+                >
+                  <p className="text-yellow-300 text-sm mb-2 font-semibold">
+                    {label}
+                  </p>
+
+                  <img
+                    src={drawnCards[i].image_url}
+                    className="w-full h-40 rounded-md mb-2 object-cover"
+                  />
+
+                  <p className="text-purple-200 text-xs">
+                    {drawnCards[i].name}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Chat Box */}
         <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 h-[470px] flex flex-col">

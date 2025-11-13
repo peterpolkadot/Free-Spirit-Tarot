@@ -5,8 +5,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'fstarot.com',
-        pathname: '/wp-content/uploads/**'
+        hostname: '**'
       }
     ]
   }

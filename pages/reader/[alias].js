@@ -1,273 +1,150 @@
 
-import { supabase } from '@/lib/supabaseClient';
-import Head from 'next/head';
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-
-
+import Layout from "@/components/Layout";
+import ChatMessage from "@/components/ChatMessage";
+import { supabase } from "@/lib/supabaseClient";
+import { useState, useRef, useEffect } from "react";
 
 export async function getServerSideProps({ params }) {
   const { data: reader } = await supabase
-    .from('readers')
-    .select('*')
-    .eq('alias', params.alias)
+    .from("readers")
+    .select("*")
+    .eq("alias", params.alias)
     .single();
 
   if (!reader) return { notFound: true };
 
-  // Reader's top drawn cards
-  const { data: cardStats } = await supabase
-    .from('card_stats')
-    .select('card_name, category, draw_count, last_drawn, image_url')
-    .eq('reader', reader.alias)
-    .order('draw_count', { ascending: false })
+  const { data: stats } = await supabase
+    .from("card_stats")
+    .select("card_name, image_url, draw_count")
+    .eq("reader", reader.alias)
+    .order("draw_count", { ascending: false })
     .limit(3);
 
-  // Reader summary (total readings, unique users, etc.)
-  const { data: summary } = await supabase
-    .from('reader_summary')
-    .select('*')
-    .eq('reader_alias', reader.alias)
-    .single();
-
-  return {
-    props: { reader, initialCardStats: cardStats || [], initialSummary: summary || null },
-   
-  };
+  return { props: { reader, stats: stats || [] } };
 }
 
-export default function ReaderPage({ reader, initialCardStats, initialSummary }) {
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [reply, setReply] = useState('');
-  const [cards, setCards] = useState([]);
-  const [cardStats, setCardStats] = useState(initialCardStats);
-  const [summary, setSummary] = useState(initialSummary);
+export default function ReaderPage({ reader, stats }) {
+  const [messages, setMessages] = useState([
+    {
+      role: "reader",
+      content: `✨ I am ${reader.name}. ${reader.tagline}`,
+    },
+  ]);
 
-  // 🔴 Real-time stats listener
-  // 🔴 Real-time listeners for card stats + reader summary
-useEffect(() => {
-  // 📌 Live updates for card_stats (top drawn cards)
-  const cardStatsChannel = supabase
-    .channel('card_stats_realtime')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'card_stats' },
-      (payload) => {
-        // Refresh top 3 cards for this reader
-        supabase
-          .from('card_stats')
-          .select('card_name, category, draw_count, last_drawn, image_url')
-          .eq('reader', reader.alias)
-          .order('draw_count', { ascending: false })
-          .limit(3)
-          .then(({ data }) => setCardStats(data || []));
-      }
-    )
-    .subscribe();
+  const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const endRef = useRef(null);
 
-  // 📌 Live updates for reader_summary (total_readings, unique_users)
-  const summaryChannel = supabase
-    .channel('reader_summary_realtime')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'reader_summary' },
-      (payload) => {
-        if (payload.new?.reader_alias === reader.alias) {
-          setSummary(payload.new);
-        }
-      }
-    )
-    .subscribe();
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-  // 🧹 Cleanup on unmount
-  return () => {
-    supabase.removeChannel(cardStatsChannel);
-    supabase.removeChannel(summaryChannel);
-  };
-}, [reader.alias]);
-
-
-
-
-
-
-  // 🔮 Handle chat submit
-  const handleAsk = async (e) => {
+  async function sendMessage(e) {
     e.preventDefault();
-    if (!message.trim()) return;
-    setLoading(true);
-    setReply('');
-    setCards([]);
+    if (!input.trim()) return;
+
+    const userMsg = { role: "user", content: input };
+    setMessages((m) => [...m, userMsg]);
+    setInput("");
+    setTyping(true);
 
     try {
-      const res = await fetch('/api/askReader', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reader_alias: reader.alias, question: message }),
+      const res = await fetch("/api/askReader", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reader_alias: reader.alias,
+          question: userMsg.content,
+        }),
       });
-      const data = await res.json();
-      setReply(data.reply || '✨ The spirits are quiet...');
-      setCards(data.cards || []);
-    } catch (err) {
-      console.error('Reading error:', err);
-      setReply('⚠️ Something went wrong during your reading.');
-    } finally {
-      setLoading(false);
-      setMessage('');
-    }
-  };
 
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    "name": reader.name,
-    "url": `https://fstarot.com/reader/${reader.alias}`,
-    "description": reader.description,
-    "jobTitle": "Tarot Reader",
-    "knowsAbout": reader.specialty,
-    "image": reader.image_url,
-  };
+      const data = await res.json();
+
+      const botMsg = {
+        role: "reader",
+        content: data.message || "✨ The spirits are quiet...",
+      };
+
+      setMessages((m) => [...m, botMsg]);
+    } finally {
+      setTyping(false);
+    }
+  }
 
   return (
-    <>
-      <Head>
-        <title>{reader.meta_title || `${reader.name} – Tarot Reader | Free Spirit Tarot`}</title>
-        <meta name="description" content={reader.meta_description || reader.description} />
-        <link rel="canonical" href={`https://fstarot.com/reader/${reader.alias}`} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
-      </Head>
+    <Layout title={reader.name}>
 
-      <article className="max-w-5xl mx-auto py-12 space-y-16">
-        {/* 🔮 Reader Header */}
-        <header className="text-center space-y-4">
+      <div className="max-w-2xl mx-auto py-16 space-y-12">
+
+        {/* Reader Header */}
+        <header className="text-center space-y-3">
           <img
-            src={reader.image_url || 'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png'}
-            alt={reader.name}
-            className="w-32 h-32 mx-auto rounded-full border-4 border-purple-700 shadow-lg"
+            src={reader.image_url}
+            className="w-32 h-32 rounded-full mx-auto border-4 border-purple-700"
           />
-          <h1 className="text-4xl font-bold text-yellow-300">
-            {reader.emoji || '🔮'} {reader.name}
+          <h1 className="text-4xl text-yellow-300">
+            {reader.emoji} {reader.name}
           </h1>
-          <p className="text-purple-200 italic">{reader.tagline}</p>
-          <p className="text-purple-300 max-w-2xl mx-auto">{reader.description}</p>
+          <p className="text-purple-300 italic">{reader.tagline}</p>
         </header>
 
-        {/* 💬 Chat Section */}
-        <section className="bg-purple-900/40 border border-purple-700 rounded-xl p-6 space-y-4 max-w-3xl mx-auto">
-          <form onSubmit={handleAsk} className="flex gap-2">
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Ask your question..."
-              className="flex-1 bg-purple-800/60 border border-purple-600 rounded-lg px-4 py-2 text-yellow-200 focus:outline-none focus:border-yellow-400"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-yellow-400 text-purple-900 font-semibold rounded-lg hover:bg-yellow-300 transition disabled:opacity-50"
-            >
-              Ask
-            </button>
-          </form>
+        {/* Chat Box */}
+        <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 h-[470px] flex flex-col">
+          <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
 
-          {loading && (
-            <div className="flex justify-center items-center py-6 text-yellow-300">
-              <motion.span
-                animate={{ opacity: [0.2, 1, 0.2] }}
-                transition={{ repeat: Infinity, duration: 1.2 }}
-                className="text-lg"
-              >
-                🔮 Shuffling the cards...
-              </motion.span>
-            </div>
-          )}
+            {messages.map((msg, i) => (
+              <ChatMessage
+                key={i}
+                from={msg.role === "reader" ? "reader" : "user"}
+                text={msg.content}
+              />
+            ))}
 
-          {!loading && reply && (
-            <div className="bg-purple-800/60 border border-purple-700 p-4 rounded-lg text-purple-100 whitespace-pre-line">
-              {reply}
-            </div>
-          )}
+            {typing && (
+              <ChatMessage from="reader" text="✨ typing..." />
+            )}
 
-          {/* 🎴 Drawn Cards */}
-          {cards.length > 0 && (
-            <div className="flex justify-center flex-wrap gap-4 mt-6">
-              {cards.map((c) => (
-                <motion.div
-                  key={c.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4 }}
-                  className="text-center"
-                >
-                  <img
-                    src={c.image_url || 'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png'}
-                    alt={c.name}
-                    className="w-32 h-48 object-contain mx-auto border-2 border-purple-700 rounded-md shadow-md"
-                  />
-                  <p className="text-yellow-300 mt-2 text-sm">{c.name}</p>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* 📊 Reader Stats (Live) */}
-        <section className="text-center space-y-6">
-          <h2 className="text-2xl text-yellow-300 font-semibold">📈 Reader Stats</h2>
-          <div className="flex justify-center gap-6 text-purple-200">
-            <div>
-              <span className="text-3xl text-yellow-300 font-bold">
-                {summary?.total_readings || 0}
-              </span>
-              <p className="text-sm">Total Readings</p>
-            </div>
-            <div>
-              <span className="text-3xl text-yellow-300 font-bold">
-                {summary?.unique_users || 0}
-              </span>
-              <p className="text-sm">Unique Seekers</p>
-            </div>
+            <div ref={endRef} />
           </div>
 
-          {cardStats?.length > 0 && (
-            <div>
-              <h3 className="text-xl text-yellow-300 font-semibold mt-6 mb-4">
-                🃏 Most Drawn Cards
-              </h3>
-              <div className="flex justify-center gap-6 flex-wrap">
-                {cardStats.map((c) => (
-                  <Link
-                    key={c.card_name}
-                    href={'/card/' + c.card_name.toLowerCase().replace(/\s+/g, '-')}
-                    className="p-3 bg-purple-900/40 border border-purple-700 rounded-lg hover:border-yellow-300 hover:scale-[1.03] transition block text-center w-32"
-                  >
-                    <img
-                      src={c.image_url || 'https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png'}
-                      alt={c.card_name}
-                      className="w-full h-48 object-contain rounded-md mb-2 border border-purple-700"
-                    />
-                    <p className="text-yellow-300 text-sm font-semibold">{c.card_name}</p>
-                    <p className="text-xs text-purple-400">{c.draw_count}× drawn</p>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
+          <form onSubmit={sendMessage} className="flex">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask your question..."
+              className="flex-1 bg-purple-800/40 border border-purple-700 rounded-l-lg px-3 py-2 text-purple-100"
+            />
+            <button className="px-4 bg-yellow-400 rounded-r-lg text-purple-900 font-semibold">
+              Send
+            </button>
+          </form>
+        </div>
 
-        {/* 🔗 Footer */}
-        <footer className="text-center mt-12">
-          <Link
-            href="/cards"
-            className="inline-block px-6 py-3 rounded-lg bg-purple-800/60 border border-purple-600 text-yellow-300 hover:border-yellow-400 hover:scale-[1.05] transition"
-          >
-            🃏 Explore All Cards
-          </Link>
-        </footer>
-      </article>
-    </>
+        {/* Stats Section */}
+        {stats.length > 0 && (
+          <section className="text-center">
+            <h2 className="text-2xl text-yellow-300 mb-3">✨ Most Drawn Cards</h2>
+            <div className="flex justify-center gap-6 flex-wrap">
+              {stats.map((c, i) => (
+                <div
+                  key={i}
+                  className="w-28 bg-purple-900/40 border border-purple-700 p-3 rounded-xl"
+                >
+                  <img
+                    src={c.image_url}
+                    className="w-full h-36 rounded-md mb-1 object-cover"
+                  />
+                  <p className="text-yellow-300 text-sm">{c.card_name}</p>
+                  <p className="text-purple-400 text-xs">
+                    {c.draw_count}× drawn
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+      </div>
+    </Layout>
   );
 }

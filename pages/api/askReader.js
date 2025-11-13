@@ -15,14 +15,25 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Please ask a question." });
     }
 
-    // 🔍 Decide whether the user is asking for a tarot reading
+    // Load reader
+    const { data: reader } = await supabase
+      .from("readers")
+      .select("*")
+      .eq("alias", reader_alias)
+      .single();
+
+    if (!reader) {
+      return res.status(404).json({ error: "Reader not found" });
+    }
+
+    // Detect reading intent
     const wantsReading = /card|read|future|past|present|spread|tarot|insight|pull/i.test(
       question
     );
 
     let selected = [];
 
-    // 🎴 Only draw cards IF the user actually wants a reading
+    // Draw cards only if needed
     if (wantsReading) {
       const { data: cards } = await supabase
         .from("cards")
@@ -38,7 +49,7 @@ export default async function handler(req, res) {
         if (!selected.find(c => c.id === pick.id)) selected.push(pick);
       }
 
-      // 🔢 Update stats
+      // Update stats
       for (const card of selected) {
         await supabase.rpc("increment_card_stat", {
           p_reader: reader_alias,
@@ -47,14 +58,13 @@ export default async function handler(req, res) {
       }
     }
 
-    // 🧠 Build final prompt
-    const messages = buildReaderPrompt(reader, selected, question)
-);
+    // Build final prompt
+    const messages = buildReaderPrompt(reader, selected, question);
 
-    // 🔮 Ask AI
+    // Ask AI
     const answer = await askOpenAI(messages);
 
-    // 📝 Log the session
+    // Log reading
     await supabase.from("reader_logs").insert({
       reader_alias,
       question,
@@ -62,7 +72,6 @@ export default async function handler(req, res) {
       response: answer,
     });
 
-    // 🚀 Return response
     return res.status(200).json({
       message: answer,
       cards: selected.length

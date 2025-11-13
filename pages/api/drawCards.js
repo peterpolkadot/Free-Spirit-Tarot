@@ -13,14 +13,12 @@ export default async function handler(req, res) {
       .select("*")
       .order("id");
 
-    // Random draw
     const selected = [];
     while (selected.length < count) {
       const pick = cards[Math.floor(Math.random() * cards.length)];
       if (!selected.includes(pick)) selected.push(pick);
     }
 
-    // Update draw stats
     for (const card of selected) {
       await supabase.rpc("increment_card_stat", {
         p_reader: reader_alias,

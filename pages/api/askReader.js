@@ -11,7 +11,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: "Missing fields." });
     }
 
-    // 1️⃣ Fetch reader profile
     const { data: reader } = await supabase
       .from("readers")
       .select("*")
@@ -22,7 +21,6 @@ export default async function handler(req, res) {
       return res.status(404).json({ message: "Reader not found." });
     }
 
-    // 2️⃣ Draw EXACT 3 cards (the spread is now built in askReader)
     const { data: cards } = await supabase
       .from("cards")
       .select("*")
@@ -38,7 +36,6 @@ export default async function handler(req, res) {
       if (!selected.includes(pick)) selected.push(pick);
     }
 
-    // 3️⃣ Update stats
     for (const card of selected) {
       await supabase.rpc("increment_card_stat", {
         p_reader: reader_alias,
@@ -46,13 +43,9 @@ export default async function handler(req, res) {
       });
     }
 
-    // 4️⃣ Build prompt (now uses cards + question)
     const messages = buildReaderPrompt(reader, selected, question);
-
-    // 5️⃣ Query OpenAI
     const answer = await askOpenAI(messages);
 
-    // 6️⃣ Log reading
     await supabase.from("reader_logs").insert({
       reader_alias,
       question,
@@ -60,7 +53,6 @@ export default async function handler(req, res) {
       response: answer,
     });
 
-    // 7️⃣ Return response
     return res.status(200).json({
       message: answer,
       cards: selected,

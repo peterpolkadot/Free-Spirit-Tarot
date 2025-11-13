@@ -11,7 +11,9 @@ export default async function handler(req, res) {
       .eq("alias", alias)
       .single();
 
-    if (!reader) return res.status(404).json({ error: "Reader not found" });
+    if (!reader) {
+      return res.status(404).json({ error: "Reader not found" });
+    }
 
     const { data: stats } = await supabase
       .from("card_stats")
@@ -21,6 +23,7 @@ export default async function handler(req, res) {
       .limit(3);
 
     return res.status(200).json({ reader, stats });
+
   } catch (err) {
     console.error("❌ getReader error:", err);
     return res.status(500).json({ error: "Failed to fetch reader" });

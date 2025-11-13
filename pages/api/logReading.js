@@ -1,24 +1,19 @@
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
-  try {
-    const { reader_alias, reader_name, cards, question, response_length } = req.body;
+import { supabase } from "@/lib/supabaseClient";
 
-    // Call your Google Apps Script Web App endpoint
-    await fetch('https://script.google.com/macros/s/AKfycbxyz123/exec', {
-      method: 'POST',
-      body: JSON.stringify({
-        reader_alias,
-        reader_name,
-        cards,
-        question,
-        response_length,
-      }),
+export default async function handler(req, res) {
+  try {
+    const { reader_alias, cards, interpretation } = req.body;
+
+    await supabase.from("readings").insert({
+      reader_alias,
+      cards,
+      interpretation,
     });
 
-    res.status(200).json({ status: 'ok' });
+    return res.status(200).json({ ok: true });
   } catch (err) {
-    console.error('logReading error', err);
-    res.status(500).json({ status: 'error', message: err.message });
+    console.error("❌ logReading error:", err);
+    return res.status(500).json({ error: "Failed to write log" });
   }
 }

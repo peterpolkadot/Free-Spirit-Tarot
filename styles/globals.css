@@ -1,17 +1,7 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  background-color: #1a0b2e;
-  color: #e9d7ff;
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-thumb {
-  background: #6b21a8;
-  border-radius: 4px;
+body {
+  @apply bg-purple-950 text-purple-100;
 }

@@ -5,7 +5,7 @@ import { buildReaderPrompt } from "@/lib/readerPrompt";
 
 export default async function handler(req, res) {
   try {
-    const { reader_alias, question } = req.body;
+    const { reader_alias, question, conversation_history } = req.body;
 
     if (!reader_alias) {
       return res.status(400).json({ error: "Missing reader_alias" });
@@ -26,15 +26,18 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Reader not found" });
     }
 
-    // Detect reading intent
-    const wantsReading = /card|read|future|past|present|spread|tarot|insight|pull/i.test(
+    // Detect reading intent - but only after first exchange to allow rapport building
+    const isFirstMessage = !conversation_history || conversation_history.length <= 1;
+    const wantsReading = /card|read|future|past|present|spread|tarot|insight|pull|draw/i.test(
       question
     );
 
     let selected = [];
 
-    // Draw cards only if needed
-    if (wantsReading) {
+    // Draw cards only if: (1) not first message OR (2) explicit card request
+    const shouldDrawCards = wantsReading && (!isFirstMessage || /draw|pull|show.*card/i.test(question));
+
+    if (shouldDrawCards) {
       const { data: cards } = await supabase
         .from("cards")
         .select("*")
@@ -58,8 +61,8 @@ export default async function handler(req, res) {
       }
     }
 
-    // Build final prompt
-    const messages = buildReaderPrompt(reader, selected, question);
+    // Build final prompt with conversation history
+    const messages = buildReaderPrompt(reader, selected, question, conversation_history);
 
     // Ask AI
     const answer = await askOpenAI(messages);

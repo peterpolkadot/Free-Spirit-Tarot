@@ -51,13 +51,14 @@ export default function ReaderPage({ reader, stats }) {
     setTyping(true);
 
     try {
-      // ONLY askReader — no more UI card drawing
+      // ONLY askReader — includes conversation history for context
       const res = await fetch("/api/askReader", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           reader_alias: reader.alias,
           question: userMsg.content,
+          conversation_history: messages,
         }),
       });
 
@@ -99,6 +100,30 @@ export default function ReaderPage({ reader, stats }) {
 
 
        
+
+        {/* Drawn Cards Display */}
+        {drawnCards.length > 0 && (
+          <div className="bg-purple-900/30 border border-purple-700 rounded-xl p-6">
+            <h3 className="text-center text-xl text-yellow-300 font-semibold mb-4">
+              🔮 Cards Drawn for You
+            </h3>
+            <div className="grid grid-cols-3 gap-4">
+              {drawnCards.map((card, idx) => (
+                <div
+                  key={idx}
+                  className="bg-purple-800/40 border border-purple-600 rounded-lg p-3 text-center hover:border-yellow-400 transition"
+                >
+                  <img
+                    src={card.image_url || "https://pirces.com.au/wp-content/uploads/2024/11/no-photo.png"}
+                    alt={card.name}
+                    className="w-full h-48 object-cover rounded-md mb-2 border-2 border-purple-700"
+                  />
+                  <h4 className="text-yellow-300 font-semibold text-sm">{card.name}</h4>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Chat Box */}
         <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 h-[470px] flex flex-col">

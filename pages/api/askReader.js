@@ -7,55 +7,70 @@ export default async function handler(req, res) {
   try {
     const { reader_alias, question } = req.body;
 
-    if (!reader_alias || !question) {
-      return res.status(400).json({ error: "Missing reader_alias or question" });
+    if (!reader_alias) {
+      return res.status(400).json({ error: "Missing reader_alias" });
     }
 
-    const { data: reader } = await supabase
-      .from("readers")
-      .select("*")
-      .eq("alias", reader_alias)
-      .single();
-
-    if (!reader) {
-      return res.status(404).json({ error: "Reader not found" });
+    if (!question || question.trim().length === 0) {
+      return res.status(400).json({ error: "Please ask a question." });
     }
 
-    const { data: deck } = await supabase
-      .from("cards")
-      .select("*")
-      .order("id");
+    // 🔍 Decide whether the user is asking for a tarot reading
+    const wantsReading = /card|read|future|past|present|spread|tarot|insight|pull/i.test(
+      question
+    );
 
-    if (!deck || deck.length < 3) {
-      return res.status(500).json({ error: "Card deck missing" });
+    let selected = [];
+
+    // 🎴 Only draw cards IF the user actually wants a reading
+    if (wantsReading) {
+      const { data: cards } = await supabase
+        .from("cards")
+        .select("*")
+        .order("id");
+
+      if (!cards || cards.length < 3) {
+        return res.status(500).json({ error: "Card deck missing" });
+      }
+
+      while (selected.length < 3) {
+        const pick = cards[Math.floor(Math.random() * cards.length)];
+        if (!selected.find(c => c.id === pick.id)) selected.push(pick);
+      }
+
+      // 🔢 Update stats
+      for (const card of selected) {
+        await supabase.rpc("increment_card_stat", {
+          p_reader: reader_alias,
+          p_card_name: card.name,
+        });
+      }
     }
 
-    const selected = [];
-    while (selected.length < 3) {
-      const pick = deck[Math.floor(Math.random() * deck.length)];
-      if (!selected.includes(pick)) selected.push(pick);
-    }
+    // 🧠 Build final prompt
+    const messages = buildReaderPrompt(reader, selected, question)
+);
 
-    for (const card of selected) {
-      await supabase.rpc("increment_card_stat", {
-        p_reader: reader_alias,
-        p_card_name: card.name
-      });
-    }
-
-    const messages = buildReaderPrompt(reader, selected, question);
+    // 🔮 Ask AI
     const answer = await askOpenAI(messages);
 
+    // 📝 Log the session
     await supabase.from("reader_logs").insert({
       reader_alias,
       question,
-      cards: selected,
-      response: answer
+      cards: selected.length ? selected : null,
+      response: answer,
     });
 
+    // 🚀 Return response
     return res.status(200).json({
       message: answer,
-      cards: selected
+      cards: selected.length
+        ? selected.map(c => ({
+            name: c.name,
+            image_url: c.image_url
+          }))
+        : []
     });
 
   } catch (err) {

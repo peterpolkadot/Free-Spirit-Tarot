@@ -97,32 +97,8 @@ export default function ReaderPage({ reader, stats }) {
           <p className="text-purple-300 italic">{reader.tagline}</p>
         </header>
 
-        {/* Drawn Cards — Only from askReader */}
-        {drawnCards.length === 3 && (
-          <section className="text-center space-y-5 animate-fadeIn">
-            <h2 className="text-2xl text-yellow-300 mb-2">🔮 Your Spread</h2>
 
-            <div className="flex justify-center gap-8 flex-wrap mt-4">
-              {drawnCards.map((c, i) => (
-                <div
-                  key={i}
-                  className="w-32 bg-purple-900/40 border border-purple-700 p-3 rounded-xl shadow-lg"
-                >
-                  <p className="text-yellow-300 text-sm mb-2 font-semibold">
-                    {["Past", "Present", "Future"][i]}
-                  </p>
-
-                  <img
-                    src={c.image_url}
-                    className="w-full h-40 rounded-md mb-2 object-cover"
-                  />
-
-                  <p className="text-purple-200 text-xs">{c.name}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+       
 
         {/* Chat Box */}
         <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 h-[470px] flex flex-col">

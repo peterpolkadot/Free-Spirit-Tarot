@@ -51,20 +51,18 @@ export default function ReaderPage({ reader, stats }) {
     setTyping(true);
 
     try {
-      // ONLY askReader — no more UI card drawing
       const res = await fetch("/api/askReader", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    reader: reader,               // 🟩 FIXED — backend needs this
-    question: userMsg.content,
-  }),
-});
-
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reader,
+          question: userMsg.content,
+        }),
+      });
 
       const data = await res.json();
 
-      // Cards returned from askReader
+      // 🌟 Save cards from backend — ALWAYS show real images
       if (data.cards) {
         setDrawnCards(data.cards);
       }
@@ -83,7 +81,6 @@ export default function ReaderPage({ reader, stats }) {
 
   return (
     <Layout title={reader.name}>
-
       <div className="max-w-2xl mx-auto py-16 space-y-14">
 
         {/* Reader Header */}
@@ -98,13 +95,31 @@ export default function ReaderPage({ reader, stats }) {
           <p className="text-purple-300 italic">{reader.tagline}</p>
         </header>
 
+        {/* REAL THREE-CARD SPREAD */}
+        {drawnCards.length === 3 && (
+          <section className="text-center space-y-3">
+            <h2 className="text-2xl text-yellow-300">✨ Your Three-Card Spread</h2>
 
-       
+            <div className="flex justify-center gap-4">
+              {drawnCards.map((c, i) => (
+                <div
+                  key={i}
+                  className="w-24 bg-purple-900/40 border border-purple-700 p-2 rounded-lg"
+                >
+                  <img
+                    src={c.image_url}
+                    className="w-full h-32 object-cover rounded-md mb-1"
+                  />
+                  <p className="text-yellow-300 text-xs">{c.name}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
-        {/* Chat Box */}
+        {/* Chat */}
         <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 h-[470px] flex flex-col">
           <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
-
             {messages.map((msg, i) => (
               <ChatMessage
                 key={i}
@@ -113,9 +128,7 @@ export default function ReaderPage({ reader, stats }) {
               />
             ))}
 
-            {typing && (
-              <ChatMessage from="reader" text="✨ typing..." />
-            )}
+            {typing && <ChatMessage from="reader" text="✨ typing..." />}
 
             <div ref={endRef} />
           </div>
@@ -133,7 +146,7 @@ export default function ReaderPage({ reader, stats }) {
           </form>
         </div>
 
-        {/* Stats Section */}
+        {/* Reader Stats */}
         {stats.length > 0 && (
           <section className="text-center">
             <h2 className="text-2xl text-yellow-300 mb-3">✨ Most Drawn Cards</h2>
@@ -148,15 +161,12 @@ export default function ReaderPage({ reader, stats }) {
                     className="w-full h-36 rounded-md mb-1 object-cover"
                   />
                   <p className="text-yellow-300 text-sm">{c.card_name}</p>
-                  <p className="text-purple-400 text-xs">
-                    {c.draw_count}× drawn
-                  </p>
+                  <p className="text-purple-400 text-xs">{c.draw_count}× drawn</p>
                 </div>
               ))}
             </div>
           </section>
         )}
-
       </div>
     </Layout>
   );

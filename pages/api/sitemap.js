@@ -51,7 +51,8 @@ ${urls
     <lastmod>${u.lastmod}</lastmod>
   </url>`
   )
-  .join("\n")}
+  .join("
+")}
 </urlset>`;
 
   res.setHeader("Content-Type", "application/xml");

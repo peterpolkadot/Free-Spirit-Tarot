@@ -11,10 +11,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing reader." });
     }
 
-    // 🔮 Draw the 3 cards from Supabase
+    // 🔮 Draw 3 cards
     const cards = await getThreeCardReading(supabase);
 
-    // 🧠 Build the OpenAI prompt for this reader + cards + question
+    // 🧠 Build prompt
     const messages = buildReaderPrompt(reader, cards, question || "");
 
     // 🔥 Call OpenAI
@@ -42,10 +42,10 @@ export default async function handler(req, res) {
       json.choices?.[0]?.message?.content ??
       "✨ The spirits retreat into silence.";
 
-    // 🌟 Return BOTH the message AND the cards to frontend
+    // 🌟 Return BOTH the message and the exact cards to frontend
     return res.status(200).json({
       message,
-      cards,
+      cards
     });
 
   } catch (err) {

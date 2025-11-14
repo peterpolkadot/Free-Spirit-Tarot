@@ -24,7 +24,7 @@ export async function getServerSideProps({ params }) {
 
 export default function ReaderPage({ reader, stats }) {
   const [messages, setMessages] = useState([
-    { role: 'reader', content: '✨ I am ' + reader.name + '. ' + reader.tagline },
+    { role: 'reader', content: '✨ Greetings, seeker. I am ' + reader.name + ', ' + reader.tagline + '. \n\nBefore we begin your reading, please tell me your name and star sign. This helps me attune to your energy. What brings you here today?' },
   ]);
 
   const [input, setInput] = useState('');
@@ -45,10 +45,20 @@ export default function ReaderPage({ reader, stats }) {
     setTyping(true);
 
     try {
+      // Send conversation history for context
+      const conversationHistory = messages.map(m => ({
+        role: m.role === 'reader' ? 'assistant' : 'user',
+        content: m.content
+      }));
+
       const res = await fetch('/api/askReader', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reader, question: userMsg.content }),
+        body: JSON.stringify({ 
+          reader, 
+          question: userMsg.content,
+          conversationHistory
+        }),
       });
 
       const data = await res.json();

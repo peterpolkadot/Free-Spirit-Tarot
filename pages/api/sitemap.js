@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -6,15 +6,15 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  const baseUrl = 'https://fstarot.com';
+  const baseUrl = "https://fstarot.com";
 
   const { data: readers } = await supabase
-    .from('readers')
-    .select('alias, updated_at');
+    .from("readers")
+    .select("alias, updated_at");
 
   const { data: categories } = await supabase
-    .from('categories')
-    .select('slug, updated_at');
+    .from("categories")
+    .select("slug, updated_at");
 
   let urls = [];
 
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   if (categories) {
     categories.forEach(cat => {
       urls.push({
-        url: baseUrl + '/' + cat.slug,
+        url: baseUrl + "/" + cat.slug,
         lastmod: (cat.updated_at || new Date()).toISOString(),
       });
     });
@@ -35,24 +35,27 @@ export default async function handler(req, res) {
   if (readers) {
     readers.forEach(reader => {
       urls.push({
-        url: baseUrl + '/reader/' + reader.alias,
+        url: baseUrl + "/reader/" + reader.alias,
         lastmod: (reader.updated_at || new Date()).toISOString(),
       });
     });
   }
 
-  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-  xml += '<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">\n';
+  const xmlParts = [];
+  xmlParts.push('<?xml version="1.0" encoding="UTF-8"?>');
+  xmlParts.push('<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">');
 
   urls.forEach(u => {
-    xml += '  <url>\n';
-    xml += '    <loc>' + u.url + '</loc>\n';
-    xml += '    <lastmod>' + u.lastmod + '</lastmod>\n';
-    xml += '  </url>\n';
+    xmlParts.push('  <url>');
+    xmlParts.push('    <loc>' + u.url + '</loc>');
+    xmlParts.push('    <lastmod>' + u.lastmod + '</lastmod>');
+    xmlParts.push('  </url>');
   });
 
-  xml += '</urlset>';
+  xmlParts.push('</urlset>');
 
-  res.setHeader('Content-Type', 'application/xml');
+  const xml = xmlParts.join('\n');
+
+  res.setHeader("Content-Type", "application/xml");
   res.status(200).send(xml);
 }

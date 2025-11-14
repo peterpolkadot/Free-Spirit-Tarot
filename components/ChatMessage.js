@@ -18,11 +18,12 @@ export default function ChatMessage({ from, text }) {
       <ReactMarkdown
         components={{
           img: ({ src, alt }) => (
-            <img
-              src={src}
-              alt={alt}
-              className="my-3 rounded-md border border-purple-700 max-w-full"
-            />
+           <img
+  src={src}
+  alt={alt}
+  className="my-3 rounded-md border border-purple-700 w-40 max-w-full mx-auto"
+/>
+
           ),
         }}
       >

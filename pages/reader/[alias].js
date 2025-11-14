@@ -33,8 +33,6 @@ export default function ReaderPage({ reader, stats }) {
 
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [drawnCards, setDrawnCards] = useState([]);
-
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -61,11 +59,6 @@ export default function ReaderPage({ reader, stats }) {
       });
 
       const data = await res.json();
-
-      // 🌟 Save cards from backend — ALWAYS show real images
-      if (data.cards) {
-        setDrawnCards(data.cards);
-      }
 
       const botMsg = {
         role: "reader",
@@ -94,28 +87,6 @@ export default function ReaderPage({ reader, stats }) {
           </h1>
           <p className="text-purple-300 italic">{reader.tagline}</p>
         </header>
-
-        {/* REAL THREE-CARD SPREAD */}
-        {drawnCards.length === 3 && (
-          <section className="text-center space-y-3">
-            <h2 className="text-2xl text-yellow-300">✨ Your Three-Card Spread</h2>
-
-            <div className="flex justify-center gap-4">
-              {drawnCards.map((c, i) => (
-                <div
-                  key={i}
-                  className="w-24 bg-purple-900/40 border border-purple-700 p-2 rounded-lg"
-                >
-                  <img
-                    src={c.image_url}
-                    className="w-full h-32 object-cover rounded-md mb-1"
-                  />
-                  <p className="text-yellow-300 text-xs">{c.name}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
 
         {/* Chat */}
         <div className="bg-purple-950/40 border border-purple-700 rounded-2xl p-4 h-[470px] flex flex-col">

@@ -1,1 +1,32 @@
-import React from 'react';\nimport ReactMarkdown from 'react-markdown';\n\nexport default function ChatMessage({ from, text }) {\n  const isReader = from === 'reader';\n\n  return (\n    <div\n      className={\n        'px-4 py-3 rounded-xl max-w-[85%] whitespace-pre-line ' +\n        (isReader\n          ? 'bg-purple-800/60 border border-purple-600 text-purple-100 ml-0'\n          : 'bg-yellow-400 text-purple-900 ml-auto'\n        )\n      }\n    >\n      <ReactMarkdown\n        components={{\n          img: ({ src, alt }) => (\n            <img\n              src={src}\n              alt={alt}\n              className='my-3 rounded-md border border-purple-700 w-32 inline-block mx-1 align-top'\n            />\n          ),\n        }}\n      >\n        {text}\n      </ReactMarkdown>\n    </div>\n  );\n}
+import React from 'react';
+import ReactMarkdown from 'react-markdown';
+
+export default function ChatMessage({ from, text }) {
+  const isReader = from === 'reader';
+
+  return (
+    <div
+      className={
+        'px-4 py-3 rounded-xl max-w-[85%] whitespace-pre-line ' +
+        (isReader
+          ? 'bg-purple-800/60 border border-purple-600 text-purple-100 ml-0'
+          : 'bg-yellow-400 text-purple-900 ml-auto'
+        )
+      }
+    >
+      <ReactMarkdown
+        components={{
+          img: ({ src, alt }) => (
+            <img
+              src={src}
+              alt={alt}
+              className='my-3 rounded-md border border-purple-700 w-32 inline-block mx-1 align-top'
+            />
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
+}

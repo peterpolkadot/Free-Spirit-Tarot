@@ -53,13 +53,14 @@ export default function ReaderPage({ reader, stats }) {
     try {
       // ONLY askReader — no more UI card drawing
       const res = await fetch("/api/askReader", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reader_alias: reader.alias,
-          question: userMsg.content,
-        }),
-      });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    reader: reader,               // 🟩 FIXED — backend needs this
+    question: userMsg.content,
+  }),
+});
+
 
       const data = await res.json();
 

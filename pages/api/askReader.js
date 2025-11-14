@@ -1,89 +1,55 @@
 
 import { supabase } from "@/lib/supabaseClient";
-import { askOpenAI } from "@/lib/openaiClient";
+import { getThreeCardReading } from "@/lib/getThreeCardReading";
 import { buildReaderPrompt } from "@/lib/readerPrompt";
 
 export default async function handler(req, res) {
   try {
-    const { reader_alias, question } = req.body;
-
-    if (!reader_alias) {
-      return res.status(400).json({ error: "Missing reader_alias" });
-    }
-
-    if (!question || question.trim().length === 0) {
-      return res.status(400).json({ error: "Please ask a question." });
-    }
-
-    // Load reader
-    const { data: reader } = await supabase
-      .from("readers")
-      .select("*")
-      .eq("alias", reader_alias)
-      .single();
+    const { reader, question } = req.body;
 
     if (!reader) {
-      return res.status(404).json({ error: "Reader not found" });
+      return res.status(400).json({ error: "Missing reader." });
     }
 
-    // Detect reading intent
-    const wantsReading = /card|read|future|past|present|spread|tarot|insight|pull/i.test(
-      question
-    );
+    // 🔮 Draw the 3 cards from Supabase
+    const cards = await getThreeCardReading(supabase);
 
-    let selected = [];
+    // 🧠 Build the OpenAI prompt for this reader + cards + question
+    const messages = buildReaderPrompt(reader, cards, question || "");
 
-    // Draw cards only if needed
-    if (wantsReading) {
-      const { data: cards } = await supabase
-        .from("cards")
-        .select("*")
-        .order("id");
-
-      if (!cards || cards.length < 3) {
-        return res.status(500).json({ error: "Card deck missing" });
-      }
-
-      while (selected.length < 3) {
-        const pick = cards[Math.floor(Math.random() * cards.length)];
-        if (!selected.find(c => c.id === pick.id)) selected.push(pick);
-      }
-
-      // Update stats
-      for (const card of selected) {
-        await supabase.rpc("increment_card_stat", {
-          p_reader: reader_alias,
-          p_card_name: card.name,
-        });
-      }
-    }
-
-    // Build final prompt
-    const messages = buildReaderPrompt(reader, selected, question);
-
-    // Ask AI
-    const answer = await askOpenAI(messages);
-
-    // Log reading
-    await supabase.from("reader_logs").insert({
-      reader_alias,
-      question,
-      cards: selected.length ? selected : null,
-      response: answer,
+    // 🔥 Call OpenAI
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages,
+        temperature: 0.7,
+      }),
     });
 
+    if (!response.ok) {
+      const msg = await response.text();
+      console.error("❌ OpenAI Error:", msg);
+      return res.status(500).json({ message: "✨ The spirits are quiet." });
+    }
+
+    const json = await response.json();
+    const message =
+      json.choices?.[0]?.message?.content ??
+      "✨ The spirits retreat into silence.";
+
+    // 🌟 Return BOTH the message AND the cards to frontend
     return res.status(200).json({
-      message: answer,
-      cards: selected.length
-        ? selected.map(c => ({
-            name: c.name,
-            image_url: c.image_url
-          }))
-        : []
+      message,
+      cards,
     });
 
   } catch (err) {
-    console.error("❌ askReader error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error("❌ askReader API error:", err);
+    return res.status(500).json({ message: "✨ The spirits fade away..." });
   }
 }

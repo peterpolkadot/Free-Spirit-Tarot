@@ -47,7 +47,7 @@ export default async function handler(req, res) {
 
     const json = await aiRes.json();
 
-    const message = json?.choices?.[0]?.message?.content || '✨ The spirits are quiet...';
+    const message = (json && json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content) || '✨ The spirits are quiet...';
 
     return res.status(200).json({ message, cards });
 

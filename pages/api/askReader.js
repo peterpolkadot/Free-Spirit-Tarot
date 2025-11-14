@@ -11,13 +11,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing reader." });
     }
 
-    // 🔮 Draw 3 cards
+    // 🔮 Draw 3 real cards from Supabase (server-side only)
     const cards = await getThreeCardReading(supabase);
 
-    // 🧠 Build prompt
+    // 🧠 Build prompt with Past / Present / Future + energy summary instructions
     const messages = buildReaderPrompt(reader, cards, question || "");
 
-    // 🔥 Call OpenAI
+    // 🔥 Call OpenAI (server safe)
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -38,14 +38,15 @@ export default async function handler(req, res) {
     }
 
     const json = await response.json();
+
     const message =
       json.choices?.[0]?.message?.content ??
       "✨ The spirits retreat into silence.";
 
-    // 🌟 Return BOTH the message and the exact cards to frontend
+    // 🃏 Return message + the **actual drawn cards**
     return res.status(200).json({
       message,
-      cards
+      cards,
     });
 
   } catch (err) {
